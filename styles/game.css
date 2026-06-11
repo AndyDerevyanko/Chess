@@ -1,0 +1,22 @@
+*{
+	box-sizing:border-box
+}
+
+#boardContainer {
+	height: min(80vh,92vw);
+	width: min(80vh,92vw);
+	overflow: hidden;
+	display: flex;
+	flex-wrap: wrap;	
+	justify-content: left;
+}
+
+body {
+	overflow: auto;
+	display: flex;
+	justify-content: center;
+	margin-bottom: 10vh;
+	margin-left: 3vw;
+	margin-right: 5vw;
+	margin-top: 10vh;
+} 
