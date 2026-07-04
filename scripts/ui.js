@@ -194,19 +194,18 @@ function renderMiniBoard(container){
 document.querySelectorAll(".mini-board[data-auto-render]").forEach(renderMiniBoard);
 
 /* ---------- Focus-nav cursor ----------
-   A single highlight cursor moves across every .nav-link and
-   .menu-btn on the page (outside modals) via arrow keys or
-   mouse hover, and stays on whichever one was highlighted last
-   instead of resetting. Visual only — this never triggers a
-   click by itself.
+   A single highlight cursor moves across the interactive
+   buttons on the page — topnav links, menu buttons, and the
+   game-action row — via arrow keys or mouse hover, and stays
+   on whichever one was highlighted last instead of resetting.
+   Each modal gets its own independent cursor over its own
+   buttons, so the same logic applies inside a modal as outside
+   one. Visual only — this never triggers a click by itself.
    --------------------------------------- */
 
-function setupFocusNav(){
-	const candidates = Array.from(document.querySelectorAll(".nav-link, .menu-btn"))
-		.filter(el => el.closest(".modal") == null);
-
+function createFocusGroup(candidates){
 	if(candidates.length === 0)
-		return;
+		return null;
 
 	candidates.forEach(el => {
 		if(el.querySelector(".nav-arrow") != null)
@@ -224,9 +223,6 @@ function setupFocusNav(){
 		el.appendChild(right);
 	});
 
-	if(typeof renderIcons === "function")
-		renderIcons();
-
 	let activeIndex = candidates.findIndex(el => el.classList.contains("primary"));
 	if(activeIndex === -1)
 		activeIndex = 0;
@@ -243,20 +239,45 @@ function setupFocusNav(){
 		el.addEventListener("mouseenter", () => setActive(i));
 	});
 
-	document.addEventListener("keydown", e => {
-		if(document.querySelector(".modal.open") != null)
-			return;
+	return {
+		next: () => setActive(activeIndex + 1),
+		prev: () => setActive(activeIndex - 1)
+	};
+}
 
+function setupFocusNav(){
+	const pageCandidates = Array.from(document.querySelectorAll(".nav-link, .menu-btn, .game-actions .choice"))
+		.filter(el => el.closest(".modal") == null);
+
+	const pageGroup = createFocusGroup(pageCandidates);
+
+	const modalGroups = new Map();
+	document.querySelectorAll(".modal").forEach(modal => {
+		const group = createFocusGroup(Array.from(modal.querySelectorAll(".menu-btn")));
+		if(group != null)
+			modalGroups.set(modal, group);
+	});
+
+	if(typeof renderIcons === "function")
+		renderIcons();
+
+	document.addEventListener("keydown", e => {
 		const active = document.activeElement;
 		if(active != null && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable))
 			return;
 
+		const openModal = document.querySelector(".modal.open");
+		const group = openModal != null ? modalGroups.get(openModal) : pageGroup;
+
+		if(group == null)
+			return;
+
 		if(e.key === "ArrowDown" || e.key === "ArrowRight"){
 			e.preventDefault();
-			setActive(activeIndex + 1);
+			group.next();
 		} else if(e.key === "ArrowUp" || e.key === "ArrowLeft"){
 			e.preventDefault();
-			setActive(activeIndex - 1);
+			group.prev();
 		}
 	});
 }

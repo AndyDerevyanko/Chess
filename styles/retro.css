@@ -130,6 +130,7 @@ body::after{
 	white-space: nowrap;
 	display: inline-flex;
 	align-items: center;
+	justify-content: center;
 	transition: background .12s, transform .08s;
 }
 
@@ -160,11 +161,18 @@ body::after{
 	box-shadow: 4px 4px 0 rgba(74,18,16,.45);
 }
 
+.choice.focus-active{
+	background: var(--gold-dark);
+	box-shadow: inset 0 0 0 2px var(--paper);
+}
+
 .menu-btn.focus-active:hover,
-.nav-link.focus-active:hover{ background: var(--gold-dark); }
+.nav-link.focus-active:hover,
+.choice.focus-active:hover{ background: var(--gold-dark); }
 
 .menu-btn.focus-active .nav-arrow,
-.nav-link.focus-active .nav-arrow{
+.nav-link.focus-active .nav-arrow,
+.choice.focus-active .nav-arrow{
 	width: 1em;
 	opacity: 1;
 	margin: 0 8px;
@@ -265,15 +273,11 @@ body::after{
 	box-shadow: 1px 1px 0 rgba(74,18,16,.35);
 }
 
-/* Static gold only applies inside modals — on the page itself,
-   gold is earned by having focus (see .focus-active above), so
-   only one button is ever highlighted at a time. */
-.modal .menu-btn.primary{
-	background: var(--gold);
-	box-shadow: 4px 4px 0 var(--gold-dark);
-}
-
-.modal .menu-btn.primary:hover{ background: #ffd12e; }
+/* .primary carries no static look of its own anymore — inside
+   a modal or out, gold is earned by being the one thing the
+   focus-nav cursor (see .focus-active above) is currently on,
+   so only one button is ever highlighted at a time. .primary
+   just marks which button that cursor starts on. */
 
 .menu-btn .icon{ width: 1.15em; height: 1.15em; margin-right: 10px; flex-shrink: 0; }
 .menu-btn .icon svg{ width: 100%; height: 100%; }

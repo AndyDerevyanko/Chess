@@ -25,7 +25,16 @@ const ICONS = {
 	puzzle: '<svg viewBox="0 0 24 24"><path d="M4 4h6a2 2 0 104 0h6v6a2 2 0 100 4v6h-6a2 2 0 10-4 0H4v-6a2 2 0 100-4V4z"/></svg>',
 	book: '<svg viewBox="0 0 24 24"><path d="M4 4c2.5-1 5.5-1 8 0v16c-2.5-1-5.5-1-8 0V4zm16 0c-2.5-1-5.5-1-8 0v16c2.5-1 5.5-1 8 0V4z"/></svg>',
 	info: '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1.2 15h-2.4v-7h2.4v7zm0-9h-2.4V6h2.4v2z"/></svg>',
-	bot: '<svg viewBox="0 0 24 24"><path d="M11 2h2v2.1a5 5 0 014 4.9v1a3 3 0 013 3v2a3 3 0 01-3 3v1a2 2 0 01-2 2H9a2 2 0 01-2-2v-1a3 3 0 01-3-3v-2a3 3 0 013-3v-1a5 5 0 014-4.9V2zM9 11a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm6 0a1.5 1.5 0 100 3 1.5 1.5 0 000-3z"/></svg>',
+	bot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+		'<line x1="12" y1="2" x2="12" y2="5"/>' +
+		'<circle cx="12" cy="1.6" r="1.1" fill="currentColor" stroke="none"/>' +
+		'<rect x="5" y="5" width="14" height="12" rx="3"/>' +
+		'<line x1="3" y1="9.5" x2="5" y2="9.5"/>' +
+		'<line x1="19" y1="9.5" x2="21" y2="9.5"/>' +
+		'<circle cx="9" cy="11" r="1.3" fill="currentColor" stroke="none"/>' +
+		'<circle cx="15" cy="11" r="1.3" fill="currentColor" stroke="none"/>' +
+		'<line x1="9" y1="15" x2="15" y2="15"/>' +
+		'</svg>',
 	players: '<svg viewBox="0 0 24 24"><path d="M8 12a3.5 3.5 0 100-7 3.5 3.5 0 000 7zm8 0a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM8 14c-3 0-6 1.5-6 4v2h9v-2c0-1 .4-2 1.1-2.8A9.4 9.4 0 008 14zm8 0c-.8 0-1.6.1-2.3.3A4.7 4.7 0 0115 18v2h7v-2c0-2.5-3-4-6-4z"/></svg>',
 	dice: '<svg viewBox="0 0 24 24"><path d="M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2zm2.3 3.3a1.4 1.4 0 100 2.8 1.4 1.4 0 000-2.8zm8 0a1.4 1.4 0 100 2.8 1.4 1.4 0 000-2.8zM12 10.6a1.4 1.4 0 100 2.8 1.4 1.4 0 000-2.8zm-4.2 4.1a1.4 1.4 0 100 2.8 1.4 1.4 0 000-2.8zm8.4 0a1.4 1.4 0 100 2.8 1.4 1.4 0 000-2.8z"/></svg>',
 	save: '<svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v14a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1zm2 2v5h8V5H7zm1 9v5h8v-5H8z"/></svg>',

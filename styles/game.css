@@ -42,12 +42,18 @@
 }
 
 /* --- Board + coordinates --------------------------------------- */
+/* A third "mirror" column, exactly as wide as the rank-label
+   gutter but hidden, balances the grid so the board itself sits
+   on the page's true center line — without it, the whole block
+   (labels + board) gets centered instead, which visibly shifts
+   the checkered board to the right of where everything else on
+   the page (like .game-actions below) is centered. */
 .board-wrap{
 	display: grid;
-	grid-template-columns: auto 1fr;
+	grid-template-columns: auto 1fr auto;
 	grid-template-areas:
-		"ranks board"
-		".     files";
+		"ranks board mirror"
+		".     files .     ";
 	align-items: stretch;
 	justify-content: center;
 	margin: 6px 0;
@@ -90,6 +96,11 @@
 	text-align: center;
 }
 
+.rank-labels.mirror{
+	grid-area: mirror;
+	visibility: hidden;
+}
+
 .file-labels{
 	grid-area: files;
 	justify-content: space-around;
@@ -98,6 +109,7 @@
 
 /* --- Action row -------------------------------------------------- */
 .game-actions{
+	width: 100%;
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: center;
