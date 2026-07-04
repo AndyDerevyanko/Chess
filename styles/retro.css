@@ -170,6 +170,16 @@ body::after{
 	margin: 0 8px;
 }
 
+/* A static back-chevron would double up with the moving
+   selection arrow when its button becomes focus-active, so
+   hide it while that button is the one highlighted. */
+.nav-link.focus-active .icon[data-icon="chevronLeft"]{
+	width: 0;
+	margin-right: 0;
+	opacity: 0;
+	overflow: hidden;
+}
+
 /* --- Headings & ornaments ------------------------------------ */
 .pixel-title{
 	font-weight: 900;
@@ -267,7 +277,7 @@ body::after{
 
 .menu-btn .icon{ width: 1.15em; height: 1.15em; margin-right: 10px; flex-shrink: 0; }
 .menu-btn .icon svg{ width: 100%; height: 100%; }
-.nav-link .icon{ width: 1em; height: 1em; margin-right: 6px; flex-shrink: 0; }
+.nav-link .icon{ width: 1em; height: 1em; margin-right: 6px; flex-shrink: 0; transition: width .15s ease, opacity .15s ease, margin .15s ease; }
 .nav-link .icon svg{ width: 100%; height: 100%; }
 
 /* --- Generic panels / cards ---------------------------------- */
