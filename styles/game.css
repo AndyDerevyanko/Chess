@@ -3,10 +3,17 @@
    Chrome around the board only. The squares and pieces inside
    #boardContainer are built and inline-styled by scripts/init.js
    (brown/yellow board) and must not be restyled here.
+
+   Same unit strategy as retro.css: the chrome (player bars,
+   action row) is sized in vw/vmin so it holds its on-screen size
+   under real browser zoom, while the board itself — the
+   playable equivalent of the home page's hero board — is left
+   on fixed units so it actually grows and shrinks when the page
+   is zoomed.
    ============================================================ */
 
 .game-page{
-	max-width: 720px;
+	max-width: 78vmin;
 }
 
 /* --- Player bars ---------------------------------------------- */
@@ -15,14 +22,14 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: 12px;
+	gap: 1.3vmin;
 	background: var(--paper);
-	border: 3px solid var(--ink);
-	border-radius: 10px;
-	box-shadow: 4px 4px 0 rgba(74,18,16,.3);
-	padding: 8px 14px;
-	margin: 8px 0;
-	font-size: .75rem;
+	border: .35vmin solid var(--ink);
+	border-radius: 1.1vmin;
+	box-shadow: .45vmin .45vmin 0 rgba(74,18,16,.3);
+	padding: .9vmin 1.55vmin;
+	margin: .9vmin 0;
+	font-size: clamp(.61rem, .86vw, 1.05vw);
 	text-transform: uppercase;
 	letter-spacing: .12em;
 }
@@ -36,13 +43,13 @@
 	flex: 1;
 	text-align: center;
 	color: var(--brick);
-	font-size: .65rem;
+	font-size: clamp(.53rem, .74vw, .9vw);
 	letter-spacing: .2em;
 	overflow: hidden;
 }
 
-/* --- Board + coordinates --------------------------------------- */
-/* A third "mirror" column, exactly as wide as the rank-label
+/* --- Board + coordinates ---------------------------------------
+   A third "mirror" column, exactly as wide as the rank-label
    gutter but hidden, balances the grid so the board itself sits
    on the page's true center line — without it, the whole block
    (labels + board) gets centered instead, which visibly shifts
@@ -59,6 +66,10 @@
 	margin: 6px 0;
 }
 
+/* Fixed, deliberately — this frame and the board it holds are
+   the "picture in the poster" on this page, meant to grow and
+   shrink with real browser zoom rather than hold still like the
+   chrome (player bars, action row) around them. */
 .board-frame{
 	grid-area: board;
 	border: 5px solid var(--ink);
@@ -70,8 +81,8 @@
 }
 
 #boardContainer{
-	height: min(66vh, 86vw);
-	width:  min(66vh, 86vw);
+	height: 480px;
+	width: 480px;
 	overflow: hidden;
 	display: flex;
 	flex-wrap: wrap;
@@ -107,12 +118,17 @@
 	padding-top: 12px;
 }
 
-/* --- Action row -------------------------------------------------- */
+/* --- Action row --------------------------------------------------
+   Gap is wider than the usual .choice-row spacing so the
+   floating selection arrow (an absolutely-positioned overlay,
+   not part of the button's own box — see .nav-arrow in
+   retro.css) has room to sit beside whichever button is active
+   without touching its neighbor. */
 .game-actions{
 	width: 100%;
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: center;
-	gap: 10px;
-	margin-top: 12px;
+	gap: 2.2vmin;
+	margin-top: 1.3vmin;
 }

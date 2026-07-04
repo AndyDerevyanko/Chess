@@ -1,12 +1,3 @@
-/* ============================================================
-   OFFLINE CHESS — shared UI behaviors
-   Presentation only: modals, toasts, fake option pickers,
-   decorative boards. NO chess logic lives in this file —
-   all rules/movement stay in scripts/init.js.
-   ============================================================ */
-
-/* ---------- Toast ---------- */
-
 let toastTimer = null;
 
 function showToast(message){
@@ -28,7 +19,7 @@ function showToast(message){
 	toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
 }
 
-/* ---------- Modals ---------- */
+//modals
 
 function openModal(id){
 	const modal = document.getElementById(id);
@@ -53,15 +44,10 @@ document.addEventListener("keydown", e => {
 		document.querySelectorAll(".modal.open").forEach(m => m.classList.remove("open"));
 });
 
-/* ---------- Declarative wiring via data-attributes ----------
-   data-open-modal="id"  -> opens that modal
-   data-close-modal      -> closes the modal it sits inside
-   data-toast="message"  -> shows a placeholder toast
-   ------------------------------------------------------------- */
+//data-open-modal="id" opens, data-close-modal closes, data-toast="msg" shows a toast
 
 document.addEventListener("click", e => {
-	// a button can close its own modal and open the next one in the
-	// same click, so a confirmation can chain into a second modal
+	//closes own modal then opens the next, so a confirm can chain into another modal
 	const closer = e.target.closest("[data-close-modal]");
 	if(closer != null){
 		const modal = closer.closest(".modal");
@@ -78,10 +64,7 @@ document.addEventListener("click", e => {
 		showToast(toaster.getAttribute("data-toast"));
 });
 
-/* ---------- Fake option pickers ----------
-   Inside any .choice-row, clicking a .choice selects it
-   (visual only). .locked choices refuse and toast instead.
-   ------------------------------------------ */
+//choice-row: clicking a .choice selects it (visual only), .locked ones just toast
 
 document.querySelectorAll(".choice-row").forEach(row => {
 	row.addEventListener("click", e => {
@@ -99,16 +82,13 @@ document.querySelectorAll(".choice-row").forEach(row => {
 	});
 });
 
-/* ---------- Toggle switches (visual only) ---------- */
+//toggle switches, visual only
 
 document.querySelectorAll(".toggle").forEach(toggle => {
 	toggle.addEventListener("click", () => toggle.classList.toggle("on"));
 });
 
-/* ---------- Mode cards (game setup) ----------
-   Clicking a .mode-card selects it and updates the start
-   button link with ?mode=<data-mode>.
-   ---------------------------------------------- */
+//clicking a .mode-card selects it and points the start button at ?mode=<data-mode>
 
 function wireModeCards(){
 	const cards = document.querySelectorAll(".mode-card[data-mode]");
@@ -130,10 +110,7 @@ function wireModeCards(){
 
 wireModeCards();
 
-/* ---------- Game-mode label on the board page ----------
-   Reads ?mode= from the URL and fills any [data-mode-label]
-   element. Purely cosmetic.
-   -------------------------------------------------------- */
+//reads ?mode= from the url and fills any [data-mode-label], purely cosmetic
 
 function applyModeLabel(){
 	const labels = document.querySelectorAll("[data-mode-label]");
@@ -154,12 +131,8 @@ function applyModeLabel(){
 
 applyModeLabel();
 
-/* ---------- Decorative mini chessboard ----------
-   Renders a static starting position into any element with
-   class .mini-board. Display only — squares are not clickable
-   and no game state is attached. Square parity mirrors the
-   real board built by scripts/init.js (a1 dark).
-   -------------------------------------------------- */
+//static starting position for any .mini-board, display only, no game state
+//square parity matches the real board in init.js (a1 dark)
 
 function renderMiniBoard(container){
 	const backRank = ["rook","knight","bishop","queen","king","bishop","knight","rook"];
@@ -193,15 +166,8 @@ function renderMiniBoard(container){
 
 document.querySelectorAll(".mini-board[data-auto-render]").forEach(renderMiniBoard);
 
-/* ---------- Focus-nav cursor ----------
-   A single highlight cursor moves across the interactive
-   buttons on the page — topnav links, menu buttons, and the
-   game-action row — via arrow keys or mouse hover, and stays
-   on whichever one was highlighted last instead of resetting.
-   Each modal gets its own independent cursor over its own
-   buttons, so the same logic applies inside a modal as outside
-   one. Visual only — this never triggers a click by itself.
-   --------------------------------------- */
+//highlight cursor over nav-link/menu-btn/choice buttons, moved by arrow keys or mouse hover
+//each modal gets its own cursor so it behaves the same inside as outside, visual only, never clicks
 
 function createFocusGroup(candidates){
 	if(candidates.length === 0)
@@ -284,12 +250,7 @@ function setupFocusNav(){
 
 setupFocusNav();
 
-/* ---------- Puzzle progress (persisted locally) ----------
-   Reads/writes a solved count per difficulty tier from
-   localStorage. There's no puzzle engine yet, so this only
-   displays whatever was last saved (0 by default) — the
-   plumbing is ready for a real engine to update it later.
-   ------------------------------------------------------------ */
+//solved count per tier from localStorage, no puzzle engine yet so this just shows last save
 
 function setupPuzzleProgress(){
 	const tiers = document.querySelectorAll(".puzzle-tier[data-tier]");
@@ -314,11 +275,8 @@ function setupPuzzleProgress(){
 
 setupPuzzleProgress();
 
-/* ---------- Editable game name (analysis page) ----------
-   Renamed via the edit icon; the name is persisted to
-   localStorage so it survives a reload. Only one template
-   game exists right now, so a single storage key is enough.
-   ------------------------------------------------------------ */
+//rename via the edit icon, persisted to localStorage so it survives a reload
+//only one template game exists right now so a single storage key is enough
 
 function setupGameNameEditor(){
 	const nameEl = document.getElementById("game-name");
