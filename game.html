@@ -1,17 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>Chess</title>
-		<!--<link rel="icon" href="./images/... type="images/png">-->
+		<title>Game Board &mdash; Offline Chess</title>
+		<link rel="stylesheet" href="./styles/retro.css">
 		<link rel="stylesheet" href="./styles/game.css">
 	</head>
 	<body>
-		<!-- <img src = "images/graphic.jpg" style = "height: 100%; width: 100%; position: fixed; display:none" id = "graphic"> -->
-		<div id="boardContainer" alt="board"> </div> 
-		<!-- <textarea style = "resize: none;" id = "textbox"></textarea> -->
-		<!-- <input type = "submit" id = "button"></input> -->
+		<div class="poster-frame">
+			<main class="page game-page">
+
+				<nav class="topnav">
+					<a class="nav-link" href="./setup.html"><i class="icon" data-icon="chevronLeft"></i> Setup</a>
+					<span class="nav-title" data-mode-label>Pass &amp; Play</span>
+					<button class="nav-link" data-open-modal="end-game-modal">End Game</button>
+				</nav>
+
+				<!-- Opponent bar -->
+				<div class="player-bar">
+					<span class="player-name">&#9818; <span data-opponent-label>Player 2</span></span>
+					<span class="capture-tray" title="Captured pieces">&mdash;</span>
+					<span class="badge muted">&#8734;</span>
+				</div>
+
+				<!-- Board with coordinates. #boardContainer is owned and
+				     rendered entirely by scripts/init.js — do not restyle
+				     its children here. -->
+				<div class="board-wrap">
+					<div class="rank-labels">
+						<span>8</span><span>7</span><span>6</span><span>5</span>
+						<span>4</span><span>3</span><span>2</span><span>1</span>
+					</div>
+					<div class="board-frame">
+						<div id="boardContainer" alt="board"></div>
+					</div>
+					<div class="file-labels">
+						<span>a</span><span>b</span><span>c</span><span>d</span>
+						<span>e</span><span>f</span><span>g</span><span>h</span>
+					</div>
+				</div>
+
+				<!-- Player bar -->
+				<div class="player-bar">
+					<span class="player-name">&#9812; Player 1</span>
+					<span class="capture-tray" title="Captured pieces">&mdash;</span>
+					<span class="badge">&#8734;</span>
+				</div>
+
+				<div class="game-actions">
+					<button class="choice" data-toast="Undo coming soon"><i class="icon" data-icon="undo"></i> Undo</button>
+					<button class="choice" data-toast="Board flip coming soon"><i class="icon" data-icon="flip"></i> Flip</button>
+					<button class="choice" data-toast="Hints coming soon"><i class="icon" data-icon="bulb"></i> Hint</button>
+					<button class="choice" data-open-modal="end-game-modal"><i class="icon" data-icon="flag"></i> Finish</button>
+				</div>
+
+				<p class="tagline">&#9813; Offline Chess &#9813;</p>
+			</main>
+		</div>
+
+		<!-- End game modal -->
+		<div class="modal" id="end-game-modal">
+			<div class="modal-backdrop"></div>
+			<div class="modal-box">
+				<h2><i class="icon" data-icon="flag"></i> End Game?</h2>
+				<p>
+					Leaving the board ends the current game.
+					Head to post-game analysis to review it, or return home.
+				</p>
+				<div class="modal-actions">
+					<a class="menu-btn primary" href="./analysis.html"><i class="icon" data-icon="search"></i> Post-Game Analysis</a>
+					<a class="menu-btn" href="./index.html"><i class="icon" data-icon="home"></i> Back to Home</a>
+					<button class="menu-btn" data-close-modal>Keep Playing</button>
+				</div>
+			</div>
+		</div>
+
+		<script src="./scripts/ui.js"></script>
+		<script src="./scripts/init.js"></script>
 	</body>
-	<script src="./scripts/init.js"></script>
 </html>

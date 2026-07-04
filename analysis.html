@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Post-Game Analysis &mdash; Offline Chess</title>
+		<link rel="stylesheet" href="./styles/retro.css">
+	</head>
+	<body>
+		<div class="poster-frame">
+			<main class="page">
+
+				<nav class="topnav">
+					<a class="nav-link" href="./index.html"><i class="icon" data-icon="chevronLeft"></i> Home</a>
+					<span class="nav-title">Post-Game Analysis</span>
+					<a class="nav-link" href="./archive.html">Archive</a>
+				</nav>
+
+				<div class="game-title-row" style="margin-top: 6px;">
+					<h1 class="pixel-title game-name" id="game-name">2026-07-04 &middot; Pass &amp; Play</h1>
+					<button class="icon-btn" id="edit-name-btn" title="Rename game" aria-label="Rename game">
+						<i class="icon" data-icon="edit"></i>
+					</button>
+				</div>
+
+				<div class="panel">
+					<div class="panel-title">
+						Final Position
+						<span class="badge">1 &ndash; 0</span>
+					</div>
+					<div class="mini-board" data-auto-render aria-hidden="true"></div>
+					<div class="choice-row" style="justify-content:center; margin-top:16px;">
+						<button class="choice" data-toast="Replay controls coming soon"><i class="icon" data-icon="rewind"></i> Start</button>
+						<button class="choice" data-toast="Replay controls coming soon"><i class="icon" data-icon="prev"></i> Prev</button>
+						<button class="choice" data-toast="Replay controls coming soon">Next <i class="icon" data-icon="next"></i></button>
+						<button class="choice" data-toast="Replay controls coming soon">End <i class="icon" data-icon="forward"></i></button>
+					</div>
+				</div>
+
+				<div class="panel">
+					<div class="panel-title">Move List</div>
+					<table class="retro-table">
+						<thead>
+							<tr><th>#</th><th>White</th><th>Black</th><th>Note</th></tr>
+						</thead>
+						<tbody>
+							<tr><td>1</td><td>e4</td><td>e5</td><td><span class="badge muted">&mdash;</span></td></tr>
+							<tr><td>2</td><td>Bc4</td><td>Bc5</td><td><span class="badge muted">&mdash;</span></td></tr>
+							<tr><td>3</td><td>Qf3</td><td>Nc6</td><td><span class="badge muted">&mdash;</span></td></tr>
+							<tr><td>4</td><td>Qxf7#</td><td>&mdash;</td><td><span class="badge muted">&mdash;</span></td></tr>
+						</tbody>
+					</table>
+				</div>
+
+				<div class="stack-sm" style="max-width:440px;">
+					<button class="menu-btn" data-toast="Saving to archive coming soon"><i class="icon" data-icon="save"></i> Save to Archive</button>
+					<a class="menu-btn primary" href="./setup.html"><i class="icon" data-icon="play"></i> Rematch</a>
+				</div>
+
+				<p class="tagline">&#9813; Offline Chess &#9813;</p>
+			</main>
+		</div>
+
+		<script src="./scripts/icons.js"></script>
+		<script src="./scripts/ui.js"></script>
+	</body>
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Game Archive &mdash; Offline Chess</title>
+		<link rel="stylesheet" href="./styles/retro.css">
+	</head>
+	<body>
+		<div class="poster-frame">
+			<main class="page">
+
+				<nav class="topnav">
+					<a class="nav-link" href="./index.html"><i class="icon" data-icon="chevronLeft"></i> Home</a>
+					<span class="nav-title">Game Archive</span>
+					<a class="nav-link" href="./setup.html">New Game</a>
+				</nav>
+
+				<p class="page-sub" style="margin-top: 6px;">Previous Games Stored Here</p>
+
+				<div class="panel">
+					<div class="panel-title">
+						Saved Games
+						<span class="badge">1 Game</span>
+					</div>
+					<table class="retro-table">
+						<thead>
+							<tr>
+								<th>Date</th>
+								<th>Mode</th>
+								<th>Result</th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td>2026-07-04</td>
+								<td>Pass &amp; Play</td>
+								<td><span class="badge">1 &ndash; 0</span></td>
+								<td style="text-align:right;">
+									<a class="choice" href="./analysis.html"><i class="icon" data-icon="search"></i> Review</a>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+
+				<div class="stack-sm" style="max-width:440px;">
+					<button class="menu-btn" data-toast="PGN export coming soon"><i class="icon" data-icon="download"></i> Export All (PGN)</button>
+					<button class="menu-btn" data-open-modal="clear-modal"><i class="icon" data-icon="trash"></i> Clear Archive</button>
+				</div>
+
+				<p class="tagline">&#9813; Offline Chess &#9813;</p>
+			</main>
+		</div>
+
+		<!-- Clear-archive confirmation, step 1 of 2 -->
+		<div class="modal" id="clear-modal">
+			<div class="modal-backdrop"></div>
+			<div class="modal-box">
+				<h2><i class="icon" data-icon="trash"></i> Clear Archive?</h2>
+				<p>This will permanently delete all saved games. There is no undo.</p>
+				<div class="modal-actions">
+					<button class="menu-btn primary" data-close-modal data-open-modal="clear-modal-confirm">Continue</button>
+					<button class="menu-btn" data-close-modal>Cancel</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Clear-archive confirmation, step 2 of 2 -->
+		<div class="modal" id="clear-modal-confirm">
+			<div class="modal-backdrop"></div>
+			<div class="modal-box">
+				<h2><i class="icon" data-icon="trash"></i> Are You Sure?</h2>
+				<p>Last chance to back out. Every saved game will be gone for good.</p>
+				<div class="modal-actions">
+					<button class="menu-btn primary" data-close-modal data-toast="Archive clearing coming soon">Yes, Delete Everything</button>
+					<button class="menu-btn" data-close-modal>Cancel</button>
+				</div>
+			</div>
+		</div>
+
+		<script src="./scripts/icons.js"></script>
+		<script src="./scripts/ui.js"></script>
+	</body>
+</html>

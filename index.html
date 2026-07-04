@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Offline Chess</title>
+		<link rel="stylesheet" href="./styles/retro.css">
+	</head>
+	<body>
+		<div class="poster-frame">
+			<main class="page">
+
+				<h1 class="pixel-title" style="font-size: clamp(2rem, 9vw, 3.4rem); margin-top: 8px;">
+					<span class="small">Offline</span>
+					Chess
+				</h1>
+
+				<div class="ornament">&#9819;</div>
+
+				<div class="mini-board" data-auto-render aria-hidden="true" style="margin-bottom: 28px;"></div>
+
+				<nav class="menu-stack">
+					<a class="menu-btn primary" href="./setup.html">
+						<i class="icon" data-icon="play"></i> Start Game
+					</a>
+					<a class="menu-btn" href="./puzzles.html">
+						<i class="icon" data-icon="puzzle"></i> Puzzles
+					</a>
+					<a class="menu-btn" href="./settings.html">
+						<i class="icon" data-icon="settings"></i> Settings
+					</a>
+					<a class="menu-btn" href="./archive.html">
+						<i class="icon" data-icon="book"></i> Game Archive
+					</a>
+					<button class="menu-btn" data-open-modal="about-modal">
+						<i class="icon" data-icon="info"></i> About
+					</button>
+				</nav>
+
+				<p class="tagline">&#9813; Offline Chess &#9813;</p>
+			</main>
+		</div>
+
+		<!-- About modal -->
+		<div class="modal" id="about-modal">
+			<div class="modal-backdrop"></div>
+			<div class="modal-box">
+				<h2><i class="icon" data-icon="info"></i> About</h2>
+				<p>
+					Offline Chess is a fully local Chess app. Play against a friend,
+					fight the built-in bot, solve puzzles, or review your games.
+				</p>
+				<p style="font-size:.6rem; letter-spacing:.2em;">
+					Version 0.1
+				</p>
+				<div class="modal-actions">
+					<button class="menu-btn" data-close-modal>Close</button>
+				</div>
+			</div>
+		</div>
+
+		<script src="./scripts/icons.js"></script>
+		<script src="./scripts/ui.js"></script>
+	</body>
+</html>

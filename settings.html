@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Settings &mdash; Offline Chess</title>
+		<link rel="stylesheet" href="./styles/retro.css">
+	</head>
+	<body>
+		<div class="poster-frame">
+			<main class="page">
+
+				<nav class="topnav">
+					<a class="nav-link" href="./index.html"><i class="icon" data-icon="chevronLeft"></i> Home</a>
+					<span class="nav-title">Settings</span>
+					<a class="nav-link" href="./setup.html">Play</a>
+				</nav>
+
+				<div class="panel" style="margin-top: 6px;">
+					<div class="panel-title">Theme</div>
+					<div class="choice-row">
+						<button class="choice selected"><span class="swatch" style="background:linear-gradient(135deg, #f6e7c2 50%, #6d1f1a 50%);"></span> Retro Classic</button>
+						<button class="choice locked" data-toast="More themes coming soon"><span class="swatch" style="background:linear-gradient(135deg, #1c2333 50%, #4a5a7a 50%);"></span> Midnight</button>
+						<button class="choice locked" data-toast="More themes coming soon"><span class="swatch" style="background:linear-gradient(135deg, #e9dcc0 50%, #8a6d46 50%);"></span> Parchment</button>
+					</div>
+				</div>
+
+				<div class="panel">
+					<div class="panel-title">Board Colors</div>
+					<div class="choice-row">
+						<button class="choice selected"><span class="swatch" style="background:linear-gradient(135deg, #7a3626 50%, #f0cf82 50%);"></span> Brown &amp; Gold</button>
+						<button class="choice locked" data-toast="Board colors coming soon"><span class="swatch" style="background:linear-gradient(135deg, #3a3a3a 50%, #eeeeee 50%);"></span> Tournament</button>
+						<button class="choice locked" data-toast="Board colors coming soon"><span class="swatch" style="background:linear-gradient(135deg, #35607a 50%, #eaf3f7 50%);"></span> Ice</button>
+					</div>
+				</div>
+
+				<div class="panel">
+					<div class="panel-title">Piece Set</div>
+					<div class="choice-row">
+						<button class="choice selected">&#9812; Classic</button>
+						<button class="choice locked" data-toast="Piece sets coming soon">Pixel</button>
+						<button class="choice locked" data-toast="Piece sets coming soon">Medieval</button>
+					</div>
+				</div>
+
+				<div class="panel">
+					<div class="panel-title">Gameplay</div>
+					<div class="setting-row">
+						<span>Show legal moves</span>
+						<div class="toggle on" role="switch" aria-checked="true" tabindex="0"></div>
+					</div>
+					<div class="setting-row">
+						<span>Move animations</span>
+						<div class="toggle on" role="switch" aria-checked="true" tabindex="0"></div>
+					</div>
+					<div class="setting-row">
+						<span>Sound effects</span>
+						<div class="toggle" role="switch" aria-checked="false" tabindex="0"></div>
+					</div>
+					<div class="setting-row">
+						<span>Auto-flip board (Pass &amp; Play)</span>
+						<div class="toggle" role="switch" aria-checked="false" tabindex="0"></div>
+					</div>
+				</div>
+
+				<button class="menu-btn primary" style="width:min(440px,100%);" data-toast="Settings saved (locally, someday)">
+					<i class="icon" data-icon="save"></i> Save Settings
+				</button>
+
+				<p class="tagline">&#9813; Offline Chess &#9813;</p>
+			</main>
+		</div>
+
+		<script src="./scripts/icons.js"></script>
+		<script src="./scripts/ui.js"></script>
+	</body>
+</html>

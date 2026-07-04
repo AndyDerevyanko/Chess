@@ -1,0 +1,694 @@
+/* ============================================================
+   OFFLINE CHESS — shared retro theme
+   Pure CSS, no external fonts or assets. Every page loads this.
+   ============================================================ */
+
+:root{
+	--cream:        #f6e7c2;
+	--cream-dark:   #eeda9f;
+	--paper:        #fdf3d7;
+	--ink:          #4a1210;
+	--maroon:       #6d1f1a;
+	--brick:        #a03a2c;
+	--gold:         #f2c11e;
+	--gold-dark:    #c9930f;
+	--board-dark:   #7a3626;  /* matches scripts/init.js exactly */
+	--board-light:  #f0cf82;  /* matches scripts/init.js exactly */
+
+	--font-pixel: "Lucida Console", "Courier New", Courier, monospace;
+}
+
+*{
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+html{
+	background: var(--maroon);
+}
+
+body{
+	font-family: var(--font-pixel);
+	color: var(--ink);
+	background: var(--cream);
+	min-height: 100vh;
+	letter-spacing: .06em;
+	-webkit-font-smoothing: none;
+}
+
+img{
+	image-rendering: pixelated;
+}
+
+.icon{ display: inline-flex; }
+.icon svg{ display: block; }
+
+a{
+	color: inherit;
+	text-decoration: none;
+}
+
+/* --- CRT scanline overlay ------------------------------------ */
+body::after{
+	content:"";
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 999;
+	background: repeating-linear-gradient(
+		to bottom,
+		rgba(74,18,16,.045) 0px,
+		rgba(74,18,16,.045) 1px,
+		transparent 1px,
+		transparent 4px
+	);
+}
+
+/* --- Poster frame (double retro border around each page) ----- */
+.poster-frame{
+	min-height: 100vh;
+	border: 10px solid var(--maroon);
+	box-shadow:
+		inset 0 0 0 4px  var(--cream),
+		inset 0 0 0 8px  var(--ink),
+		inset 0 0 0 12px var(--cream),
+		inset 0 0 0 14px var(--gold-dark);
+	padding: 34px clamp(14px, 4vw, 48px);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.page{
+	width: 100%;
+	max-width: 880px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	animation: pageIn .35s ease-out both;
+}
+
+@keyframes pageIn{
+	from{ opacity: 0; transform: translateY(10px); }
+	to  { opacity: 1; transform: translateY(0);    }
+}
+
+/* --- Top navigation bar -------------------------------------- */
+.topnav{
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	margin-bottom: 22px;
+	border: 3px solid var(--ink);
+	border-radius: 10px;
+	background: var(--paper);
+	padding: 8px 14px;
+	box-shadow: 4px 4px 0 rgba(74,18,16,.35);
+}
+
+.topnav .nav-title{
+	font-weight: 900;
+	text-transform: uppercase;
+	font-size: clamp(.8rem, 2.4vw, 1.05rem);
+	letter-spacing: .18em;
+	text-align: center;
+	flex: 1;
+}
+
+.nav-link{
+	font-weight: 900;
+	text-transform: uppercase;
+	font-size: .75rem;
+	padding: 6px 10px;
+	border: 2px solid var(--ink);
+	border-radius: 8px;
+	background: var(--cream);
+	cursor: pointer;
+	white-space: nowrap;
+	display: inline-flex;
+	align-items: center;
+	transition: background .12s, transform .08s;
+}
+
+.nav-link:hover{ background: var(--gold); }
+.nav-link:active{ transform: translate(1px,2px); }
+
+/* --- Focus-nav cursor ------------------------------------------
+   Arrow keys or mouse hover move a "last highlighted" cursor
+   across every .nav-link / .menu-btn on the page (outside
+   modals). Wired up by setupFocusNav() in scripts/ui.js.
+   ------------------------------------------------------------- */
+.nav-arrow{
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 0;
+	opacity: 0;
+	overflow: hidden;
+	flex-shrink: 0;
+	transition: width .15s ease, opacity .15s ease, margin .15s ease;
+}
+
+.nav-arrow svg{ width: .85em; height: .85em; }
+
+.menu-btn.focus-active,
+.nav-link.focus-active{
+	background: var(--gold-dark);
+	box-shadow: 4px 4px 0 rgba(74,18,16,.45);
+}
+
+.menu-btn.focus-active:hover,
+.nav-link.focus-active:hover{ background: var(--gold-dark); }
+
+.menu-btn.focus-active .nav-arrow,
+.nav-link.focus-active .nav-arrow{
+	width: 1em;
+	opacity: 1;
+	margin: 0 8px;
+}
+
+/* --- Headings & ornaments ------------------------------------ */
+.pixel-title{
+	font-weight: 900;
+	text-transform: uppercase;
+	text-align: center;
+	line-height: 1.05;
+	letter-spacing: .1em;
+	color: var(--ink);
+	text-shadow: 3px 3px 0 var(--cream-dark), 5px 5px 0 rgba(74,18,16,.25);
+}
+
+.pixel-title .small{
+	display: block;
+	font-size: .38em;
+	letter-spacing: .5em;
+	margin-bottom: .35em;
+	text-shadow: none;
+}
+
+.ornament{
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: min(420px, 90%);
+	margin: 14px auto 20px;
+	color: var(--maroon);
+	font-size: 1.1rem;
+}
+
+.ornament::before,
+.ornament::after{
+	content:"";
+	flex: 1;
+	height: 3px;
+	background: var(--ink);
+}
+
+.page-heading{
+	font-size: clamp(1.3rem, 5vw, 2rem);
+	margin-bottom: 4px;
+}
+
+.page-sub{
+	text-transform: uppercase;
+	font-size: .72rem;
+	letter-spacing: .3em;
+	color: var(--brick);
+	text-align: center;
+	margin-bottom: 22px;
+}
+
+/* --- Poster menu buttons (home) ------------------------------ */
+.menu-stack{
+	width: min(440px, 100%);
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.menu-btn{
+	font-family: var(--font-pixel);
+	font-weight: 900;
+	text-transform: uppercase;
+	letter-spacing: .18em;
+	font-size: clamp(.85rem, 2.8vw, 1.05rem);
+	color: var(--ink);
+	background: var(--paper);
+	border: 3px solid var(--ink);
+	border-radius: 14px;
+	padding: 14px 18px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	box-shadow: 4px 4px 0 rgba(74,18,16,.35);
+	transition: transform .08s, box-shadow .08s, background .12s;
+}
+
+.menu-btn:hover{ background: var(--cream-dark); }
+
+.menu-btn:active{
+	transform: translate(3px,3px);
+	box-shadow: 1px 1px 0 rgba(74,18,16,.35);
+}
+
+/* Static gold only applies inside modals — on the page itself,
+   gold is earned by having focus (see .focus-active above), so
+   only one button is ever highlighted at a time. */
+.modal .menu-btn.primary{
+	background: var(--gold);
+	box-shadow: 4px 4px 0 var(--gold-dark);
+}
+
+.modal .menu-btn.primary:hover{ background: #ffd12e; }
+
+.menu-btn .icon{ width: 1.15em; height: 1.15em; margin-right: 10px; flex-shrink: 0; }
+.menu-btn .icon svg{ width: 100%; height: 100%; }
+.nav-link .icon{ width: 1em; height: 1em; margin-right: 6px; flex-shrink: 0; }
+.nav-link .icon svg{ width: 100%; height: 100%; }
+
+/* --- Generic panels / cards ---------------------------------- */
+.panel{
+	width: 100%;
+	background: var(--paper);
+	border: 3px solid var(--ink);
+	border-radius: 14px;
+	box-shadow: 5px 5px 0 rgba(74,18,16,.3);
+	padding: 20px;
+	margin-bottom: 20px;
+}
+
+.panel-title{
+	font-size: .8rem;
+	text-transform: uppercase;
+	letter-spacing: .25em;
+	border-bottom: 3px solid var(--ink);
+	padding-bottom: 8px;
+	margin-bottom: 14px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.card-grid{
+	width: 100%;
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+	gap: 16px;
+}
+
+.mode-card{
+	background: var(--paper);
+	border: 3px solid var(--ink);
+	border-radius: 14px;
+	box-shadow: 5px 5px 0 rgba(74,18,16,.3);
+	padding: 20px 16px;
+	text-align: center;
+	cursor: pointer;
+	transition: transform .1s, background .12s;
+}
+
+.mode-card:hover{ background: var(--cream-dark); }
+
+.mode-card.selected{
+	background: var(--gold);
+	box-shadow: 5px 5px 0 var(--gold-dark);
+}
+
+.mode-card .icon{
+	width: 2.2rem;
+	height: 2.2rem;
+	margin: 0 auto 10px;
+}
+
+.mode-card .icon svg{ width: 100%; height: 100%; }
+
+.mode-card h3{
+	text-transform: uppercase;
+	letter-spacing: .15em;
+	font-size: .95rem;
+	margin-bottom: 8px;
+}
+
+.mode-card p{
+	font-size: .68rem;
+	line-height: 1.6;
+	color: var(--maroon);
+}
+
+/* --- Choice pills (settings / setup options) ----------------- */
+.choice-row{
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.choice{
+	font-family: var(--font-pixel);
+	font-weight: 900;
+	text-transform: uppercase;
+	font-size: .7rem;
+	letter-spacing: .12em;
+	color: var(--ink);
+	background: var(--cream);
+	border: 2px solid var(--ink);
+	border-radius: 10px;
+	padding: 8px 14px;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	transition: background .12s, transform .08s;
+}
+
+.choice .icon{ width: .95em; height: .95em; flex-shrink: 0; }
+.choice .icon svg{ width: 100%; height: 100%; }
+
+.choice:hover{ background: var(--cream-dark); }
+.choice:active{ transform: translate(1px,2px); }
+
+.choice.selected{
+	background: var(--gold);
+	box-shadow: inset 0 0 0 2px var(--paper);
+}
+
+.swatch{
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	border: 2px solid var(--ink);
+	border-radius: 3px;
+	flex-shrink: 0;
+	vertical-align: -2px;
+}
+
+.choice.locked{
+	opacity: .45;
+	cursor: not-allowed;
+	background: var(--cream);
+}
+
+/* --- Toggle switch (visual only) ------------------------------ */
+.setting-row{
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 14px;
+	padding: 10px 0;
+	border-bottom: 2px dashed rgba(74,18,16,.25);
+	font-size: .75rem;
+	text-transform: uppercase;
+	letter-spacing: .12em;
+}
+
+.setting-row:last-child{ border-bottom: none; }
+
+.toggle{
+	position: relative;
+	width: 54px;
+	height: 26px;
+	border: 3px solid var(--ink);
+	border-radius: 13px;
+	background: var(--cream-dark);
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: background .15s;
+}
+
+.toggle::after{
+	content:"";
+	position: absolute;
+	top: 1px;
+	left: 2px;
+	width: 18px;
+	height: 18px;
+	border: 2px solid var(--ink);
+	border-radius: 50%;
+	background: var(--paper);
+	transition: left .15s;
+}
+
+.toggle.on{ background: var(--gold); }
+.toggle.on::after{ left: 26px; }
+
+/* --- Mini decorative chessboard ------------------------------- */
+.mini-board{
+	display: grid;
+	grid-template-columns: repeat(8, 1fr);
+	grid-template-rows: repeat(8, 1fr);
+	width: min(340px, 82vw);
+	aspect-ratio: 1;
+	border: 4px solid var(--ink);
+	box-shadow: 6px 6px 0 rgba(74,18,16,.35);
+	margin: 0 auto;
+}
+
+.mini-board .sq{
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.mini-board .sq.dark { background: var(--board-dark);  }
+.mini-board .sq.light{ background: var(--board-light); }
+
+.mini-board .sq img{
+	width: 88%;
+	height: 88%;
+	object-fit: contain;
+}
+
+/* --- Tables (archive / move lists) ---------------------------- */
+.retro-table{
+	width: 100%;
+	border-collapse: collapse;
+	font-size: .7rem;
+	text-transform: uppercase;
+	letter-spacing: .08em;
+}
+
+.retro-table th{
+	text-align: left;
+	border-bottom: 3px solid var(--ink);
+	padding: 8px 10px;
+	letter-spacing: .2em;
+	font-size: .65rem;
+}
+
+.retro-table td{
+	padding: 10px;
+	border-bottom: 2px dashed rgba(74,18,16,.25);
+}
+
+.retro-table tr:last-child td{ border-bottom: none; }
+
+/* --- Badges ---------------------------------------------------- */
+.badge{
+	display: inline-block;
+	font-size: .58rem;
+	font-weight: 900;
+	text-transform: uppercase;
+	letter-spacing: .15em;
+	padding: 4px 8px;
+	border: 2px solid var(--ink);
+	border-radius: 8px;
+	background: var(--gold);
+}
+
+.badge.muted{ background: var(--cream-dark); }
+
+/* --- Modal ------------------------------------------------------ */
+.modal{
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+}
+
+.modal.open{ display: flex; }
+
+.modal-backdrop{
+	position: absolute;
+	inset: 0;
+	background: rgba(74,18,16,.72);
+}
+
+.modal-box{
+	position: relative;
+	width: min(460px, 100%);
+	background: var(--paper);
+	border: 4px solid var(--ink);
+	border-radius: 14px;
+	box-shadow:
+		0 0 0 4px var(--cream),
+		0 0 0 7px var(--ink),
+		10px 12px 0 rgba(0,0,0,.35);
+	padding: 24px 20px;
+	text-align: center;
+	animation: modalIn .18s ease-out both;
+}
+
+@keyframes modalIn{
+	from{ opacity: 0; transform: scale(.9) translateY(12px); }
+	to  { opacity: 1; transform: scale(1)  translateY(0);    }
+}
+
+.modal-box h2{
+	text-transform: uppercase;
+	letter-spacing: .2em;
+	font-size: 1rem;
+	margin-bottom: 14px;
+}
+
+.modal-box h2 .icon{ width: .95em; height: .95em; margin-right: 8px; vertical-align: -2px; }
+.modal-box h2 .icon svg{ width: 100%; height: 100%; }
+
+.modal-box p{
+	font-size: .72rem;
+	line-height: 1.7;
+	margin-bottom: 18px;
+	color: var(--maroon);
+}
+
+.modal-actions{
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+/* --- Toast ------------------------------------------------------ */
+#toast{
+	position: fixed;
+	left: 50%;
+	bottom: 28px;
+	transform: translate(-50%, 80px);
+	z-index: 1100;
+	background: var(--ink);
+	color: var(--cream);
+	font-family: var(--font-pixel);
+	font-weight: 900;
+	text-transform: uppercase;
+	font-size: .68rem;
+	letter-spacing: .18em;
+	border: 3px solid var(--gold);
+	border-radius: 10px;
+	padding: 12px 20px;
+	opacity: 0;
+	pointer-events: none;
+	transition: transform .22s ease, opacity .22s ease;
+	white-space: nowrap;
+}
+
+#toast.show{
+	transform: translate(-50%, 0);
+	opacity: 1;
+}
+
+/* --- Icon-only button (e.g. rename) ------------------------------ */
+.icon-btn{
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	border: 2px solid var(--ink);
+	border-radius: 8px;
+	background: var(--cream);
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: background .12s, transform .08s;
+}
+
+.icon-btn .icon{ width: 1em; height: 1em; margin: 0; }
+.icon-btn .icon svg{ width: 100%; height: 100%; }
+
+.icon-btn:hover{ background: var(--gold); }
+.icon-btn:active{ transform: translate(1px,2px); }
+
+/* --- Editable game title (analysis page) ------------------------- */
+.game-title-row{
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	margin-bottom: 6px;
+	flex-wrap: wrap;
+}
+
+.game-name{
+	font-size: clamp(1.1rem, 4.5vw, 1.6rem);
+}
+
+.game-name.editing{
+	outline: 2px dashed var(--brick);
+	outline-offset: 4px;
+	background: var(--cream-dark);
+	border-radius: 6px;
+	padding: 2px 10px;
+}
+
+/* --- Progress bar (puzzle tiers) ---------------------------------- */
+.puzzle-tier{
+	padding: 12px 0;
+	border-bottom: 2px dashed rgba(74,18,16,.25);
+}
+
+.puzzle-tier:last-child{ border-bottom: none; }
+
+.tier-row{
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 10px;
+	margin-bottom: 8px;
+	font-size: .78rem;
+	text-transform: uppercase;
+	letter-spacing: .12em;
+}
+
+.tier-name{ font-weight: 900; }
+
+.tier-count{
+	font-size: .62rem;
+	letter-spacing: .1em;
+	color: var(--brick);
+	white-space: nowrap;
+}
+
+.progress-track{
+	width: 100%;
+	height: 14px;
+	border: 2px solid var(--ink);
+	border-radius: 7px;
+	background: var(--cream-dark);
+	overflow: hidden;
+}
+
+.progress-fill{
+	height: 100%;
+	background: var(--gold);
+	width: 0%;
+	transition: width .3s ease;
+}
+
+/* --- Footer tagline --------------------------------------------- */
+.tagline{
+	margin-top: auto;
+	padding-top: 26px;
+	font-size: .62rem;
+	text-transform: uppercase;
+	letter-spacing: .3em;
+	color: var(--maroon);
+	text-align: center;
+}
+
+/* --- Utility ------------------------------------------------------ */
+.stack-sm{ display:flex; flex-direction:column; gap:10px; width:100%; }
+.center  { text-align:center; }
+.mt-lg   { margin-top: 26px; }

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Game Setup &mdash; Offline Chess</title>
+		<link rel="stylesheet" href="./styles/retro.css">
+	</head>
+	<body>
+		<div class="poster-frame">
+			<main class="page">
+
+				<nav class="topnav">
+					<a class="nav-link" href="./index.html"><i class="icon" data-icon="chevronLeft"></i> Home</a>
+					<span class="nav-title">Game Setup</span>
+					<a class="nav-link" href="./archive.html">Archive</a>
+				</nav>
+
+				<p class="page-sub" style="margin-top: 6px;">Select a Mode, Pick Your Side.</p>
+
+				<div class="card-grid" style="margin-bottom: 22px;">
+					<div class="mode-card" data-mode="bot" role="button" tabindex="0">
+						<i class="icon" data-icon="bot"></i>
+						<h3>Local vs Bot</h3>
+					</div>
+					<div class="mode-card selected" data-mode="pass" role="button" tabindex="0">
+						<i class="icon" data-icon="players"></i>
+						<h3>Pass &amp; Play</h3>
+						<p>Hand the device over after each move.</p>
+					</div>
+				</div>
+
+				<div class="panel">
+					<div class="panel-title">Play As</div>
+					<div class="choice-row">
+						<button class="choice selected">&#9812; White</button>
+						<button class="choice">&#9818; Black</button>
+						<button class="choice"><i class="icon" data-icon="dice"></i> Random</button>
+					</div>
+				</div>
+
+				<div class="panel">
+					<div class="panel-title">
+						Bot Difficulty
+						<span class="badge muted">Bot Mode Only</span>
+					</div>
+					<div class="choice-row">
+						<button class="choice selected">Novice</button>
+						<button class="choice locked" data-toast="More difficulties coming soon">Club</button>
+						<button class="choice locked" data-toast="More difficulties coming soon">Master</button>
+						<button class="choice locked" data-toast="More difficulties coming soon">Engine</button>
+					</div>
+				</div>
+
+				<div class="panel">
+					<div class="panel-title">Time Control</div>
+					<div class="choice-row">
+						<button class="choice selected">&#8734; Unlimited</button>
+						<button class="choice locked" data-toast="Clocks coming soon">5 min</button>
+						<button class="choice locked" data-toast="Clocks coming soon">10 min</button>
+						<button class="choice locked" data-toast="Clocks coming soon">15 + 10</button>
+					</div>
+				</div>
+
+				<a id="start-game-btn" class="menu-btn primary" href="./game.html?mode=pass" style="width: min(440px,100%);">
+					<i class="icon" data-icon="play"></i> To The Board
+				</a>
+
+				<p class="tagline">&#9813; Offline Chess &#9813;</p>
+			</main>
+		</div>
+
+		<script src="./scripts/icons.js"></script>
+		<script src="./scripts/ui.js"></script>
+	</body>
+</html>

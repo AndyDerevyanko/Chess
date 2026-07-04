@@ -345,9 +345,9 @@ function initialize(){
 		elem[i].id = numToPos(i);
 		
 		if((Math.floor(i/8) % 2 == 0 && i % 2 == 0) || (Math.floor(i/8) % 2 == 1 && i % 2 == 1)){
-			elem[i].style.backgroundColor = "brown";
+			elem[i].style.backgroundColor = "#7a3626";
 		} else {
-			elem[i].style.backgroundColor = "yellow";
+			elem[i].style.backgroundColor = "#f0cf82";
 		}
 		
 		elem[i].style.minHeight = "12.5%";

@@ -1,22 +1,106 @@
-*{
-	box-sizing:border-box
+/* ============================================================
+   OFFLINE CHESS — game board page
+   Chrome around the board only. The squares and pieces inside
+   #boardContainer are built and inline-styled by scripts/init.js
+   (brown/yellow board) and must not be restyled here.
+   ============================================================ */
+
+.game-page{
+	max-width: 720px;
 }
 
-#boardContainer {
-	height: min(80vh,92vw);
-	width: min(80vh,92vw);
+/* --- Player bars ---------------------------------------------- */
+.player-bar{
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	background: var(--paper);
+	border: 3px solid var(--ink);
+	border-radius: 10px;
+	box-shadow: 4px 4px 0 rgba(74,18,16,.3);
+	padding: 8px 14px;
+	margin: 8px 0;
+	font-size: .75rem;
+	text-transform: uppercase;
+	letter-spacing: .12em;
+}
+
+.player-name{
+	font-weight: 900;
+	white-space: nowrap;
+}
+
+.capture-tray{
+	flex: 1;
+	text-align: center;
+	color: var(--brick);
+	font-size: .65rem;
+	letter-spacing: .2em;
+	overflow: hidden;
+}
+
+/* --- Board + coordinates --------------------------------------- */
+.board-wrap{
+	display: grid;
+	grid-template-columns: auto 1fr;
+	grid-template-areas:
+		"ranks board"
+		".     files";
+	align-items: stretch;
+	justify-content: center;
+	margin: 6px 0;
+}
+
+.board-frame{
+	grid-area: board;
+	border: 5px solid var(--ink);
+	box-shadow:
+		0 0 0 4px var(--cream-dark),
+		0 0 0 7px var(--ink),
+		8px 10px 0 rgba(74,18,16,.35);
+	background: var(--ink);
+}
+
+#boardContainer{
+	height: min(66vh, 86vw);
+	width:  min(66vh, 86vw);
 	overflow: hidden;
 	display: flex;
-	flex-wrap: wrap;	
+	flex-wrap: wrap;
 	justify-content: left;
 }
 
-body {
-	overflow: auto;
+.rank-labels,
+.file-labels{
 	display: flex;
+	font-weight: 900;
+	font-size: .7rem;
+	text-transform: uppercase;
+	color: var(--maroon);
+	user-select: none;
+}
+
+.rank-labels{
+	grid-area: ranks;
+	flex-direction: column;
+	justify-content: space-around;
+	padding-right: 10px;
+	text-align: center;
+}
+
+.file-labels{
+	grid-area: files;
+	justify-content: space-around;
+	padding-top: 12px;
+}
+
+/* --- Action row -------------------------------------------------- */
+.game-actions{
+	display: flex;
+	flex-wrap: wrap;
 	justify-content: center;
-	margin-bottom: 10vh;
-	margin-left: 3vw;
-	margin-right: 5vw;
-	margin-top: 10vh;
-} 
+	gap: 10px;
+	margin-top: 12px;
+}
