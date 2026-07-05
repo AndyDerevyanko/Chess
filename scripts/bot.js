@@ -11,6 +11,109 @@ if(mode === "bot"){
 	const difficulty = new URLSearchParams(window.location.search).get("difficulty");
 	const BOT_DEPTH = DEPTH_BY_DIFFICULTY[difficulty] || DEPTH_BY_DIFFICULTY.novice;
 
+	//novice stays a pure bean-counter - only club and master get the positional eval
+	const SMART_EVAL = BOT_DEPTH >= 3;
+
+	//how much heavy material is still around, 24 = fresh board. drives the blend
+	//between middlegame and endgame scoring below
+	const PHASE_WEIGHT = { p: 0, n: 1, b: 1, r: 2, q: 4, k: 0 };
+
+	//piece-square tables, read like a diagram: first row is rank 8, columns a-h,
+	//centipawns from white's side (black mirrors the rank). the classic
+	//"simplified evaluation function" numbers - pawns and minors get paid for the
+	//center, knights hate the rim, rooks like the 7th
+	const PST = {
+		p: [
+			[  0,  0,  0,  0,  0,  0,  0,  0],
+			[ 50, 50, 50, 50, 50, 50, 50, 50],
+			[ 10, 10, 20, 30, 30, 20, 10, 10],
+			[  5,  5, 10, 25, 25, 10,  5,  5],
+			[  0,  0,  0, 20, 20,  0,  0,  0],
+			[  5, -5,-10,  0,  0,-10, -5,  5],
+			[  5, 10, 10,-20,-20, 10, 10,  5],
+			[  0,  0,  0,  0,  0,  0,  0,  0]
+		],
+		n: [
+			[-50,-40,-30,-30,-30,-30,-40,-50],
+			[-40,-20,  0,  0,  0,  0,-20,-40],
+			[-30,  0, 10, 15, 15, 10,  0,-30],
+			[-30,  5, 15, 20, 20, 15,  5,-30],
+			[-30,  0, 15, 20, 20, 15,  0,-30],
+			[-30,  5, 10, 15, 15, 10,  5,-30],
+			[-40,-20,  0,  5,  5,  0,-20,-40],
+			[-50,-40,-30,-30,-30,-30,-40,-50]
+		],
+		b: [
+			[-20,-10,-10,-10,-10,-10,-10,-20],
+			[-10,  0,  0,  0,  0,  0,  0,-10],
+			[-10,  0,  5, 10, 10,  5,  0,-10],
+			[-10,  5,  5, 10, 10,  5,  5,-10],
+			[-10,  0, 10, 10, 10, 10,  0,-10],
+			[-10, 10, 10, 10, 10, 10, 10,-10],
+			[-10,  5,  0,  0,  0,  0,  5,-10],
+			[-20,-10,-10,-10,-10,-10,-10,-20]
+		],
+		r: [
+			[  0,  0,  0,  0,  0,  0,  0,  0],
+			[  5, 10, 10, 10, 10, 10, 10,  5],
+			[ -5,  0,  0,  0,  0,  0,  0, -5],
+			[ -5,  0,  0,  0,  0,  0,  0, -5],
+			[ -5,  0,  0,  0,  0,  0,  0, -5],
+			[ -5,  0,  0,  0,  0,  0,  0, -5],
+			[ -5,  0,  0,  0,  0,  0,  0, -5],
+			[  0,  0,  0,  5,  5,  0,  0,  0]
+		],
+		q: [
+			[-20,-10,-10, -5, -5,-10,-10,-20],
+			[-10,  0,  0,  0,  0,  0,  0,-10],
+			[-10,  0,  5,  5,  5,  5,  0,-10],
+			[ -5,  0,  5,  5,  5,  5,  0, -5],
+			[  0,  0,  5,  5,  5,  5,  0, -5],
+			[-10,  5,  5,  5,  5,  5,  0,-10],
+			[-10,  0,  5,  0,  0,  0,  0,-10],
+			[-20,-10,-10, -5, -5,-10,-10,-20]
+		]
+	};
+
+	//two king tables blended by phase: early it pays to castle and hide behind
+	//pawns, late the king has to come out and work
+	const PST_KING_MG = [
+		[-30,-40,-40,-50,-50,-40,-40,-30],
+		[-30,-40,-40,-50,-50,-40,-40,-30],
+		[-30,-40,-40,-50,-50,-40,-40,-30],
+		[-30,-40,-40,-50,-50,-40,-40,-30],
+		[-20,-30,-30,-40,-40,-30,-30,-20],
+		[-10,-20,-20,-20,-20,-20,-20,-10],
+		[ 20, 20,  0,  0,  0,  0, 20, 20],
+		[ 20, 30, 10,  0,  0, 10, 30, 20]
+	];
+	const PST_KING_EG = [
+		[-50,-40,-30,-20,-20,-30,-40,-50],
+		[-30,-20,-10,  0,  0,-10,-20,-30],
+		[-30,-10, 20, 30, 30, 20,-10,-30],
+		[-30,-10, 30, 40, 40, 30,-10,-30],
+		[-30,-10, 30, 40, 40, 30,-10,-30],
+		[-30,-10, 20, 30, 30, 20,-10,-30],
+		[-30,-30,  0,  0,  0,  0,-30,-30],
+		[-50,-30,-30,-30,-30,-30,-30,-50]
+	];
+
+	//endgame pawn table - placement stops mattering, distance to promotion is all
+	const PST_PAWN_EG = [
+		[  0,  0,  0,  0,  0,  0,  0,  0],
+		[ 80, 80, 80, 80, 80, 80, 80, 80],
+		[ 50, 50, 50, 50, 50, 50, 50, 50],
+		[ 30, 30, 30, 30, 30, 30, 30, 30],
+		[ 20, 20, 20, 20, 20, 20, 20, 20],
+		[ 10, 10, 10, 10, 10, 10, 10, 10],
+		[ 10, 10, 10, 10, 10, 10, 10, 10],
+		[  0,  0,  0,  0,  0,  0,  0,  0]
+	];
+
+	function pstValue(table, color, file, rank){
+		return table[color == "w" ? 7 - rank : rank][file];
+	}
+
 	function clonePiece(orig){
 		if(orig == null)
 			return null;
@@ -48,24 +151,128 @@ if(mode === "bot"){
 		return moves;
 	}
 
-	//cheap MVV-LVA-ish ordering so alpha-beta prunes far more - captures first,
-	//biggest victim/smallest attacker first, quiet moves left in generated order
-	function orderMoves(boardArr, moves){
-		return moves.slice().sort((a, b) => {
-			const capA = boardArr.get(a[1]);
-			const capB = boardArr.get(b[1]);
-			const scoreA = capA != null ? capA.material * 10 - boardArr.get(a[0]).material : -1;
-			const scoreB = capB != null ? capB.material * 10 - boardArr.get(b[0]).material : -1;
-			return scoreB - scoreA;
-		});
+	//ordering so alpha-beta prunes far more - captures first (biggest victim,
+	//smallest attacker), then quiet moves by how much their square improves
+	function moveScore(boardArr, from, to){
+		const victim = boardArr.get(to);
+		const mover = boardArr.get(from);
+
+		if(victim != null)
+			return 100000 + victim.material * 10 - mover.material;
+
+		if(SMART_EVAL && PST[mover.type] != null){
+			const [ff, fr] = posToArr(from);
+			const [tf, tr] = posToArr(to);
+			return pstValue(PST[mover.type], mover.color, tf, tr)
+			     - pstValue(PST[mover.type], mover.color, ff, fr);
+		}
+
+		return 0;
 	}
 
+	function orderMoves(boardArr, moves){
+		return moves
+			.map(m => [moveScore(boardArr, m[0], m[1]), m])
+			.sort((a, b) => b[0] - a[0])
+			.map(pair => pair[1]);
+	}
+
+	//centipawns, positive = good for the bot. material always; on club/master
+	//also piece placement (tapered mg/eg), passed pawns, a middlegame pawn
+	//shield in front of the king, and a mop-up push in won endgames
 	function evaluate(boardArr){
 		let score = 0;
-		boardArr.forEach(piece => {
-			if(piece != null)
-				score += (piece.color == BOT_COLOR ? 1 : -1) * piece.material;
+		let material = 0;
+		let phase = 0;
+		const kings = {};
+		const pawns = { w: [], b: [] };
+
+		boardArr.forEach((piece, sq) => {
+			if(piece == null)
+				return;
+
+			const sign = piece.color == BOT_COLOR ? 1 : -1;
+			score += sign * piece.material * 100;
+			material += sign * piece.material * 100;
+
+			if(!SMART_EVAL)
+				return;
+
+			phase += PHASE_WEIGHT[piece.type];
+			const [file, rank] = posToArr(sq);
+
+			if(piece.type == "k")
+				kings[piece.color] = [file, rank];
+			else if(piece.type == "p")
+				pawns[piece.color].push([file, rank]);
+			else
+				score += sign * pstValue(PST[piece.type], piece.color, file, rank);
 		});
+
+		if(!SMART_EVAL)
+			return score;
+
+		const mg = Math.min(phase, 24) / 24; //1 = full middlegame, 0 = bare-kings endgame
+
+		for(const color of ["w", "b"]){
+			const sign = color == BOT_COLOR ? 1 : -1;
+			const enemy = pawns[otherColor(color)];
+
+			for(const [file, rank] of pawns[color]){
+				//placement early, raw promotion distance late
+				score += sign * Math.round(
+					pstValue(PST.p, color, file, rank) * mg +
+					pstValue(PST_PAWN_EG, color, file, rank) * (1 - mg));
+
+				//passed pawn - no enemy pawn can ever block or capture it
+				let passed = true;
+				for(const [ef, er] of enemy)
+					if(Math.abs(ef - file) <= 1 && (color == "w" ? er > rank : er < rank)){
+						passed = false;
+						break;
+					}
+
+				if(passed){
+					const advance = color == "w" ? rank : 7 - rank;
+					score += sign * Math.round((10 + advance * advance * 4) * (1.4 - mg));
+				}
+			}
+
+			if(kings[color] == null)
+				continue;
+
+			const [kf, kr] = kings[color];
+
+			//castle and hide early, centralize late
+			score += sign * Math.round(
+				pstValue(PST_KING_MG, color, kf, kr) * mg +
+				pstValue(PST_KING_EG, color, kf, kr) * (1 - mg));
+
+			//pawn shield - own pawns one or two squares in front of the king
+			if(mg > .5){
+				let shield = 0;
+				for(const [pf, pr] of pawns[color]){
+					const steps = color == "w" ? pr - kr : kr - pr;
+					if(Math.abs(pf - kf) <= 1 && steps >= 1 && steps <= 2)
+						shield += steps == 1 ? 12 : 6;
+				}
+				score += sign * Math.round(shield * mg);
+			}
+		}
+
+		//mop-up: clearly ahead with little left - corner their king and walk ours
+		//over, since a lone queen or rook can't mate without the king's help
+		if(mg < .4 && Math.abs(material) >= 300 && kings.w != null && kings.b != null){
+			const loserColor = material > 0 ? otherColor(BOT_COLOR) : BOT_COLOR;
+			const [lf, lr] = kings[loserColor];
+			const cornered = Math.max(Math.abs(lf - 3.5), Math.abs(lr - 3.5)) * 2;
+			//chebyshev, not manhattan - kings cover diagonals at full speed, and
+			//manhattan rates a diagonal approach as no progress, which left the
+			//king shuffling on an eval plateau instead of walking in for the mate
+			const kingGap = Math.max(Math.abs(kings.w[0] - kings.b[0]), Math.abs(kings.w[1] - kings.b[1]));
+			score += (material > 0 ? 1 : -1) * Math.round((cornered * 16 + (8 - kingGap) * 14) * (1 - mg));
+		}
+
 		return score;
 	}
 
@@ -75,8 +282,10 @@ if(mode === "bot"){
 	function search(boardArr, depth, alpha, beta, color){
 		const moves = orderMoves(boardArr, legalMoves(boardArr, color));
 
+		//mate score dwarfs any possible eval (max material+position is ~5000cp);
+		//the +depth prefers the fastest mate among several
 		if(moves.length === 0)
-			return inHeck(boardArr, color) ? (color == BOT_COLOR ? -9000 - depth : 9000 + depth) : 0;
+			return inHeck(boardArr, color) ? (color == BOT_COLOR ? -100000 - depth : 100000 + depth) : 0;
 
 		if(depth === 0)
 			return evaluate(boardArr);
@@ -104,6 +313,26 @@ if(mode === "bot"){
 		return best;
 	}
 
+	//positions the bot has already produced this game. no repetition rule is
+	//implemented anywhere, so without a nudge away from repeats a won endgame
+	//can shuffle the same two positions forever once the mate is past the
+	//search horizon - the penalty forces it to try something new instead
+	const seenAfterBotMove = new Map();
+
+	function positionKey(boardArr){
+		let key = "";
+		boardArr.forEach((piece, sq) => {
+			if(piece != null)
+				key += sq + piece.color + piece.type;
+		});
+		return key;
+	}
+
+	function recordBotPosition(){
+		const key = positionKey(board);
+		seenAfterBotMove.set(key, (seenAfterBotMove.get(key) || 0) + 1);
+	}
+
 	function chooseBotMove(depth){
 		const moves = orderMoves(board, legalMoves(board, BOT_COLOR));
 		let bestMove = null;
@@ -115,7 +344,8 @@ if(mode === "bot"){
 			moveNoCheck(from, to, next);
 			if(needsPromotion(to, next))
 				promote(to, "q", next);
-			const score = search(next, depth - 1, alpha, Infinity, otherColor(BOT_COLOR));
+			let score = search(next, depth - 1, alpha, Infinity, otherColor(BOT_COLOR));
+			score -= 45 * (seenAfterBotMove.get(positionKey(next)) || 0);
 
 			if(score > bestScore){
 				bestScore = score;
@@ -139,6 +369,8 @@ if(mode === "bot"){
 			updateValidMoveArray(board);
 			updateBoard();
 		}
+
+		recordBotPosition();
 
 		player = otherColor(player);
 		updateCheckHighlight();
