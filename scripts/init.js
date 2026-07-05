@@ -234,6 +234,7 @@ function drawPiece(p, s){
 	img.style.height = "95%";
 	img.style.width = "95%";
 	img.style.zIndex = "2";
+	img.draggable = false; //custom drag-and-drop replaces the native ghost-image drag
 	
 	switch(p.type){
 		case "p":
@@ -331,64 +332,301 @@ function orientBoardR(){
 	document.getElementById("boardContainer").innerHTML = "";
 	for(let i = 63; i >= 0; i--){
 		let x = Math.floor(i/8)+8*(i-8*Math.floor(i/8));
-		document.getElementById("boardContainer").appendChild(initialize()[16*Math.floor(x/8)+7-x]); 
+		document.getElementById("boardContainer").appendChild(initialize()[16*Math.floor(x/8)+7-x]);
 	}
 	updateBoard();
 }
 
+//orientBoard/orientBoardR only reorder the squares - the rank/file labels are
+//static markup, so they need rewriting to match or the coordinates read backwards
+function updateLabels(){
+	const reversed = player == "b";
+	const ranks = reversed ? ["1","2","3","4","5","6","7","8"] : ["8","7","6","5","4","3","2","1"];
+	const files = reversed ? ["h","g","f","e","d","c","b","a"] : ["a","b","c","d","e","f","g","h"];
+
+	document.querySelectorAll(".rank-labels span").forEach((el, i) => el.textContent = ranks[i]);
+	document.querySelectorAll(".file-labels span").forEach((el, i) => el.textContent = files[i]);
+}
+
+//orientBoard/orientBoardR rebuild the squares via initialize(), which nulls every
+//board entry as it goes - save and restore the pieces around the flip so a mid-game
+//flip doesn't wipe the position
+function flipBoard(){
+	const saved = new Map(board);
+
+	if(player == "w")
+		orientBoard();
+	else
+		orientBoardR();
+
+	saved.forEach((v, k) => board.set(k, v));
+	updateBoard();
+	updateLabels();
+}
+
+//currently selected square, if any
+let selected = null;
+
+function clearMarkers(){
+	Array.from(document.getElementsByClassName("marker")).forEach(el => el.remove());
+}
+
+function showMarkers(sq, piece){
+	for(const dest of piece.validMoves){
+		let marker = document.createElement("div");
+		marker.className = "marker " + (board.get(dest) != null ? "marker-capture" : "marker-move");
+		marker.id = "marker" + sq + dest;
+		document.getElementById(dest).appendChild(marker);
+	}
+}
+
+function needsPromotion(sq, boardArr = board){
+	const piece = boardArr.get(sq);
+	if(piece == null || piece.type != "p")
+		return false;
+
+	const rank = sq.charAt(1);
+	return (piece.color == "w" && rank == "8") || (piece.color == "b" && rank == "1");
+}
+
+function promote(sq, type, boardArr = board){
+	const color = boardArr.get(sq).color;
+	switch(type){
+		case "n": boardArr.set(sq, new n(color, sq)); break;
+		case "b": boardArr.set(sq, new b(color, sq)); break;
+		case "r": boardArr.set(sq, new r(color, sq)); break;
+		default:  boardArr.set(sq, new q(color, sq)); break;
+	}
+}
+
+//promotion needs a human choice, so it pauses completeMove's turn-handoff
+//until the modal reports back which piece was picked
+function showPromotionPicker(sq, onChosen){
+	const modal = document.getElementById("promotion-modal");
+	if(modal == null){
+		promote(sq, "q");
+		onChosen();
+		return;
+	}
+
+	const handler = e => {
+		const btn = e.target.closest("[data-promote]");
+		if(btn == null)
+			return;
+
+		promote(sq, btn.getAttribute("data-promote"));
+		updateValidMoveArray(board);
+		updateBoard();
+		closeModal("promotion-modal");
+		modal.removeEventListener("click", handler);
+		onChosen();
+	};
+
+	modal.addEventListener("click", handler);
+	openModal("promotion-modal");
+}
+
+//red pulse on whichever king is currently in check, cleared and re-checked every turn
+function updateCheckHighlight(){
+	document.querySelectorAll(".in-check").forEach(el => el.classList.remove("in-check"));
+
+	let kingSq = null;
+	board.forEach((piece, sq) => {
+		if(piece != null && piece.type == "k" && piece.color == player)
+			kingSq = sq;
+	});
+
+	if(kingSq != null && inHeck(board, player))
+		document.getElementById(kingSq).classList.add("in-check");
+}
+
+function showGameOverModal(title, sub){
+	const modal = document.getElementById("game-over-modal");
+	if(modal == null){
+		showToast(title);
+		return;
+	}
+
+	document.getElementById("game-over-title").textContent = title;
+	document.getElementById("game-over-sub").textContent = sub;
+	openModal("game-over-modal");
+}
+
+//shared by click-to-move and drag-to-move once a legal (from, to) is chosen
+function completeMove(from, to){
+	move(from, to);
+	clearMarkers();
+	selected = null;
+
+	if(needsPromotion(to))
+		showPromotionPicker(to, finishTurn);
+	else
+		finishTurn();
+}
+
+function finishTurn(){
+	player = otherColor(player);
+
+	const winner = otherColor(player) == "w" ? "White" : "Black";
+	const mate = checkMateCheck(board, player);
+	const stale = !mate && staleMateCheck(board, player);
+
+	//flipBoard() rebuilds the square divs from scratch, so the check
+	//highlight has to be applied after it, not before
+	if(!mate && !stale){
+		if(typeof window.afterPlayerMove === "function")
+			window.afterPlayerMove();
+		else
+			flipBoard(); //pass & play: hand the device over, board flips to face the next player
+	}
+
+	updateCheckHighlight();
+
+	if(mate)
+		showGameOverModal("Checkmate!", winner + " wins.");
+	else if(stale)
+		showGameOverModal("Stalemate!", "It's a draw.");
+}
+
+//drag-and-drop, alongside click-to-move. Native <img> dragging is turned off
+//(drawPiece sets draggable=false) so this ghost fully replaces the browser's
+//own drag-image instead of fighting it. A plain click never touches this -
+//pointerDown only ever leads somewhere once the pointer has actually moved.
+let pointerDown = null;
+let dragGhost = null;
+
+function startDrag(sq){
+	const img = document.getElementById(sq).querySelector("img");
+	if(img == null)
+		return;
+
+	dragGhost = document.createElement("img");
+	dragGhost.src = img.src;
+	dragGhost.draggable = false;
+	dragGhost.style.position = "fixed";
+	dragGhost.style.width = img.offsetWidth + "px";
+	dragGhost.style.height = img.offsetHeight + "px";
+	dragGhost.style.pointerEvents = "none";
+	dragGhost.style.zIndex = "999";
+	dragGhost.style.opacity = ".9";
+	document.body.appendChild(dragGhost);
+
+	img.style.visibility = "hidden";
+}
+
+function moveDragTo(x, y){
+	if(dragGhost == null)
+		return;
+
+	dragGhost.style.left = (x - dragGhost.offsetWidth / 2) + "px";
+	dragGhost.style.top = (y - dragGhost.offsetHeight / 2) + "px";
+}
+
+function endDrag(from, x, y){
+	const img = document.getElementById(from).querySelector("img");
+	if(img != null)
+		img.style.visibility = "visible";
+
+	if(dragGhost != null){
+		dragGhost.remove();
+		dragGhost = null;
+	}
+
+	const under = document.elementFromPoint(x, y);
+	const targetSquare = under != null ? under.closest("#boardContainer > div") : null;
+
+	if(targetSquare != null && targetSquare.id != from && board.get(from) != null && board.get(from).validMoves.includes(targetSquare.id))
+		completeMove(from, targetSquare.id);
+}
+
+document.addEventListener("pointermove", e => {
+	if(pointerDown == null)
+		return;
+
+	if(!pointerDown.dragging){
+		if(Math.hypot(e.clientX - pointerDown.x, e.clientY - pointerDown.y) < 6)
+			return;
+
+		pointerDown.dragging = true;
+		selected = pointerDown.sq;
+		clearMarkers();
+		showMarkers(pointerDown.sq, board.get(pointerDown.sq));
+		startDrag(pointerDown.sq);
+	}
+
+	moveDragTo(e.clientX, e.clientY);
+});
+
+document.addEventListener("pointerup", e => {
+	if(pointerDown == null)
+		return;
+
+	if(pointerDown.dragging)
+		endDrag(pointerDown.sq, e.clientX, e.clientY);
+
+	pointerDown = null;
+});
+
 function initialize(){
-			
+
 	let elem = [];
-	
+
 	for(let i = 0; i < 64; i++){
 		elem.push(document.createElement("div"));
 		elem[i].id = numToPos(i);
-		
+
 		if((Math.floor(i/8) % 2 == 0 && i % 2 == 0) || (Math.floor(i/8) % 2 == 1 && i % 2 == 1)){
 			elem[i].style.backgroundColor = "#7a3626";
 		} else {
 			elem[i].style.backgroundColor = "#f0cf82";
 		}
-		
+
 		elem[i].style.minHeight = "12.5%";
 		elem[i].style.minWidth = "12.5%";
 		elem[i].style.maxHeight = "12.5%";
 		elem[i].style.maxWidth = "12.5%";
 		elem[i].style.display = "flex";
 		elem[i].style.justifyContent = "center";
-		
+		elem[i].style.position = "relative";
+
 		board.set(elem[i].id, null);
-		
+
+		elem[i].addEventListener("pointerdown", e => {
+			if(window.boardLocked)
+				return;
+
+			const piece = board.get(elem[i].id);
+			if(piece != null && piece.color == player)
+				pointerDown = { sq: elem[i].id, x: e.clientX, y: e.clientY, dragging: false };
+		});
+
 		elem[i].addEventListener("click", () => {
-			if(board.get(elem[i].id) != null){
-				if(document.getElementsByClassName("marker" + elem[i].id).length != 0){
-					document.querySelectorAll("[alt=marker]").forEach(element => element.remove());
-					Array.from(document.getElementsByClassName("marker")).forEach(element => element.remove());
-				} else {
-					document.querySelectorAll("[alt=marker]").forEach(element => element.remove());
-					Array.from(document.getElementsByClassName("marker")).forEach(element => element.remove());
-					
-					for(j of board.get(elem[i].id).validMoves){
-						let marker = document.createElement("div");
-						let markerImg = document.createElement("img");
-						marker.className = "marker";
-						marker.id = "marker" + elem[i].id + j;
-						marker.alt = "marker";
-						marker.zIndex = "1";
-						marker.position = "relative";
-						marker.style.height = "100%";
-						marker.style.width = "100%";
-						markerImg.style.height = "80%";
-						markerImg.style.marginLeft = "10%";
-						markerImg.style.marginTop = "10%";
-						markerImg.src = "images/board/selection.png";
-						markerImg.alt = "marker";
-						markerImg.style.filter = "opacity(30%)";
-						marker.appendChild(markerImg);
-						document.getElementById(j).appendChild(marker);
-					}
-				}
-			} else throw "square is null?";
+			if(window.boardLocked)
+				return;
+
+			const sq = elem[i].id;
+
+			//clicking a marked destination actually makes the move
+			if(selected != null && board.get(selected) != null && board.get(selected).validMoves.includes(sq)){
+				completeMove(selected, sq);
+				return;
+			}
+
+			clearMarkers();
+
+			//clicking the already-selected square again just deselects
+			if(selected == sq){
+				selected = null;
+				return;
+			}
+
+			const piece = board.get(sq);
+			if(piece != null && piece.color == player){
+				selected = sq;
+				showMarkers(sq, piece);
+			} else {
+				selected = null;
+			}
 		});
 	}
 	return elem;

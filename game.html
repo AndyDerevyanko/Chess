@@ -63,6 +63,36 @@
 			</main>
 		</div>
 
+		<!-- Pawn promotion modal - modal-mandatory: a choice must be made,
+		     so backdrop click / Escape must not be able to dismiss it -->
+		<div class="modal modal-mandatory" id="promotion-modal">
+			<div class="modal-backdrop"></div>
+			<div class="modal-box">
+				<h2>&#9813; Promote Pawn</h2>
+				<div class="modal-actions promotion-row">
+					<button class="menu-btn" data-promote="q">&#9813; Queen</button>
+					<button class="menu-btn" data-promote="r">&#9814; Rook</button>
+					<button class="menu-btn" data-promote="b">&#9815; Bishop</button>
+					<button class="menu-btn" data-promote="n">&#9816; Knight</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Game over modal (checkmate/stalemate) - dismissible, unlike promotion,
+		     since the player may just want to look at the final position -->
+		<div class="modal" id="game-over-modal">
+			<div class="modal-backdrop"></div>
+			<div class="modal-box">
+				<h2><i class="icon" data-icon="flag"></i> <span id="game-over-title">Checkmate!</span></h2>
+				<p id="game-over-sub">White wins.</p>
+				<div class="modal-actions">
+					<a class="menu-btn primary" href="./analysis.html"><i class="icon" data-icon="search"></i> Post-Game Analysis</a>
+					<a class="menu-btn" href="./index.html"><i class="icon" data-icon="home"></i> Back to Home</a>
+					<button class="menu-btn" data-close-modal>Review Board</button>
+				</div>
+			</div>
+		</div>
+
 		<!-- End game modal -->
 		<div class="modal" id="end-game-modal">
 			<div class="modal-backdrop"></div>
@@ -83,5 +113,6 @@
 		<script src="./scripts/icons.js"></script>
 		<script src="./scripts/ui.js"></script>
 		<script src="./scripts/init.js"></script>
+		<script src="./scripts/bot.js"></script>
 	</body>
 </html>

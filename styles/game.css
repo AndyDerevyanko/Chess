@@ -89,6 +89,50 @@
 	justify-content: left;
 }
 
+/* belt-and-suspenders alongside draggable=false in drawPiece() - no native
+   ghost-image drag or text-selection while picking up a piece to drag it */
+#boardContainer img{
+	-webkit-user-drag: none;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+/* legal-move markers, laid over the square rather than beside the
+   piece in it — the square is a flex row, so a sibling div would
+   fight the piece for space and squish both to one side */
+.marker{
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	border-radius: 50%;
+	pointer-events: none;
+}
+
+.marker-move{
+	width: 30%;
+	height: 30%;
+	background: rgba(74,18,16,.4);
+}
+
+.marker-capture{
+	width: 86%;
+	height: 86%;
+	border: 5px solid var(--gold);
+	box-shadow: 0 0 0 2px var(--ink), 0 0 8px 2px rgba(0,0,0,.5);
+}
+
+/* king's square while its side is in check - inset so it doesn't fight the
+   square's own inline background-color like a plain background would */
+.in-check{
+	animation: checkPulse 1s ease-in-out infinite;
+}
+
+@keyframes checkPulse{
+	0%, 100% { box-shadow: inset 0 0 0 4px rgba(200,30,20,.9), inset 0 0 14px 4px rgba(200,30,20,.5); }
+	50%      { box-shadow: inset 0 0 0 4px rgba(200,30,20,1),  inset 0 0 22px 8px rgba(200,30,20,.75); }
+}
+
 .rank-labels,
 .file-labels{
 	display: flex;

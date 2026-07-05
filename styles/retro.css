@@ -700,6 +700,15 @@ body::after{
 	gap: 1.1vmin;
 }
 
+.promotion-row{
+	flex-direction: row;
+	flex-wrap: wrap;
+}
+
+.promotion-row .menu-btn{
+	flex: 1 1 40%;
+}
+
 /* --- Toast ------------------------------------------------------ */
 #toast{
 	position: fixed;

@@ -34,14 +34,17 @@ function closeModal(id){
 }
 
 document.addEventListener("click", e => {
-	// backdrop click closes its modal
-	if(e.target.classList.contains("modal-backdrop"))
-		e.target.closest(".modal").classList.remove("open");
+	// backdrop click closes its modal, except modal-mandatory ones (e.g. promotion choice)
+	if(e.target.classList.contains("modal-backdrop")){
+		const modal = e.target.closest(".modal");
+		if(!modal.classList.contains("modal-mandatory"))
+			modal.classList.remove("open");
+	}
 });
 
 document.addEventListener("keydown", e => {
 	if(e.key === "Escape")
-		document.querySelectorAll(".modal.open").forEach(m => m.classList.remove("open"));
+		document.querySelectorAll(".modal.open:not(.modal-mandatory)").forEach(m => m.classList.remove("open"));
 });
 
 //data-open-modal="id" opens, data-close-modal closes, data-toast="msg" shows a toast
