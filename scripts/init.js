@@ -183,14 +183,6 @@ function resetBoard(boardArr = board){
 	for(let i = 0; i < 8; i++){
 		boardArr.set(intToRank(i)+"7", new p("b", intToRank(i)+"7"));
 	}
-
-	boardArr.forEach((v1, k1) =>{
-		if(v1 != null)
-			boardArr.forEach((v2,k2) => {
-				if(checkMove(k1, k2, boardArr))
-					v1.validMoves.push(k2);
-			});
-	});
 }
 
 function clear(){
@@ -414,20 +406,25 @@ function updateBoard(boardArr = board){
 	}
 }
 
+//initialize() builds all 64 squares (and nulls the board Map), so it's called
+//once per orient, not once per square - the old per-square call created 4096
+//throwaway divs every flip, which is what made pass & play stutter between moves
 function orientBoard(){
+	const squares = initialize();
 	document.getElementById("boardContainer").innerHTML = "";
 	for(let i = 0; i < 64; i++){
 		let x = Math.floor(i/8)+8*(i-8*Math.floor(i/8));
-		document.getElementById("boardContainer").appendChild(initialize()[16*Math.floor(x/8)+7-x]); 
+		document.getElementById("boardContainer").appendChild(squares[16*Math.floor(x/8)+7-x]);
 	}
 	updateBoard();
 }
 
 function orientBoardR(){
+	const squares = initialize();
 	document.getElementById("boardContainer").innerHTML = "";
 	for(let i = 63; i >= 0; i--){
 		let x = Math.floor(i/8)+8*(i-8*Math.floor(i/8));
-		document.getElementById("boardContainer").appendChild(initialize()[16*Math.floor(x/8)+7-x]);
+		document.getElementById("boardContainer").appendChild(squares[16*Math.floor(x/8)+7-x]);
 	}
 	updateBoard();
 }
@@ -511,7 +508,7 @@ function buildHistoryBoard(upToPly){
 	for(let i = 0; i < upToPly; i++){
 		const from = moveHistory[i].slice(0, 2);
 		const to = moveHistory[i].slice(2, 4);
-		move(from, to, temp);
+		move(from, to, temp, false); //display only, no valid-move lists needed
 		if(promotions[i] != null)
 			promote(to, promotions[i], temp);
 	}
@@ -591,7 +588,7 @@ function undoMove(){
 		const to = moveHistory[i].slice(2, 4);
 		const resetClock = board.get(to) != null || board.get(from).type == "p";
 
-		move(from, to);
+		move(from, to, board, false); //hash and flags per ply, redraw once below
 		halfmoveClock = resetClock ? 0 : halfmoveClock + 1;
 
 		if(promotions[i] != null)
@@ -601,6 +598,7 @@ function undoMove(){
 		recordPosition();
 	}
 
+	updateValidMoveArray(board); //replay skipped the per-ply recompute
 	lastOpeningName = currentOpeningName(moveHistory); //resync without re-toasting
 	window.boardLocked = false;
 	closeModal("game-over-modal"); //undo can revive a game that had just ended
@@ -720,11 +718,17 @@ function showGameOverModal(title, sub){
 	setTimeout(() => openModal("game-over-modal"), 700);
 }
 
+//whether the last real move took a piece - read by finishTurn to pick between
+//the move and capture sounds, set by completeMove and bot.js's applyBotMove
+let lastMoveCapture = false;
+
 //shared by click-to-move and drag-to-move once a legal (from, to) is chosen
 function completeMove(from, to){
-	//captured before move() mutates the board - a pawn move covers en passant
-	//too, since e.p. is only ever performed by a pawn
-	const resetClock = board.get(to) != null || board.get(from).type == "p";
+	//captured before move() mutates the board - a pawn landing on an empty
+	//square diagonally is the en passant case
+	const capture = board.get(to) != null || (board.get(from).type == "p" && from.charAt(0) != to.charAt(0));
+	const resetClock = capture || board.get(from).type == "p";
+	lastMoveCapture = capture;
 
 	move(from, to);
 	moveHistory.push(from + to);
@@ -745,10 +749,23 @@ function finishTurn(){
 	syncViewToLive();
 
 	const winner = otherColor(player) == "w" ? "White" : "Black";
-	const mate = checkMateCheck(board, player);
-	const stale = !mate && staleMateCheck(board, player);
+
+	//move() just refreshed every piece's validMoves for this exact position, so
+	//mate/stalemate falls out of them for free instead of a fresh full-board scan
+	let anyMoves = false;
+	board.forEach(piece => {
+		if(piece != null && piece.color == player && piece.validMoves.length > 0)
+			anyMoves = true;
+	});
+
+	const inCheck = inHeck(board, player);
+	const mate = !anyMoves && inCheck;
+	const stale = !anyMoves && !inCheck;
 	const fifty = !mate && !stale && halfmoveClock >= 100;
 	const repetition = !mate && !stale && !fifty && isThreefoldRepetition();
+
+	if(typeof playSound == "function")
+		playSound(mate ? "checkmate" : inCheck ? "check" : lastMoveCapture ? "capture" : "move");
 
 	//flipBoard() rebuilds the square divs from scratch, so the check
 	//highlight has to be applied after it, not before
@@ -777,6 +794,8 @@ function finishTurn(){
 //pointerDown only ever leads somewhere once the pointer has actually moved.
 let pointerDown = null;
 let dragGhost = null;
+let dragGhostHalfW = 0;
+let dragGhostHalfH = 0;
 
 function startDrag(sq){
 	const img = document.getElementById(sq).querySelector("img");
@@ -787,12 +806,20 @@ function startDrag(sq){
 	dragGhost.src = img.src;
 	dragGhost.draggable = false;
 	dragGhost.style.position = "fixed";
+	dragGhost.style.left = "0";
+	dragGhost.style.top = "0";
 	dragGhost.style.width = img.offsetWidth + "px";
 	dragGhost.style.height = img.offsetHeight + "px";
 	dragGhost.style.pointerEvents = "none";
 	dragGhost.style.zIndex = "999";
 	dragGhost.style.opacity = ".9";
+	dragGhost.style.willChange = "transform";
 	document.body.appendChild(dragGhost);
+
+	//measured once here - reading offsetWidth inside moveDragTo would force a
+	//fresh layout on every single pointermove
+	dragGhostHalfW = dragGhost.offsetWidth / 2;
+	dragGhostHalfH = dragGhost.offsetHeight / 2;
 
 	img.style.visibility = "hidden";
 }
@@ -801,9 +828,35 @@ function moveDragTo(x, y){
 	if(dragGhost == null)
 		return;
 
-	dragGhost.style.left = (x - dragGhost.offsetWidth / 2) + "px";
-	dragGhost.style.top = (y - dragGhost.offsetHeight / 2) + "px";
+	//transform, not left/top - the ghost rides the compositor instead of
+	//triggering layout on each movement
+	dragGhost.style.transform = "translate(" + (x - dragGhostHalfW) + "px," + (y - dragGhostHalfH) + "px)";
 }
+
+//right-click mid-drag puts the piece back where it came from (as on chess.com);
+//the context menu itself is already suppressed on game pages by ui.js
+function cancelDrag(){
+	if(pointerDown == null)
+		return;
+
+	const img = document.getElementById(pointerDown.sq).querySelector("img");
+	if(img != null)
+		img.style.visibility = "visible";
+
+	if(dragGhost != null){
+		dragGhost.remove();
+		dragGhost = null;
+	}
+
+	clearMarkers();
+	selected = null;
+	pointerDown = null;
+}
+
+document.addEventListener("pointerdown", e => {
+	if(e.button == 2 && pointerDown != null)
+		cancelDrag();
+});
 
 function endDrag(from, x, y){
 	const img = document.getElementById(from).querySelector("img");
@@ -841,7 +894,9 @@ document.addEventListener("pointermove", e => {
 });
 
 document.addEventListener("pointerup", e => {
-	if(pointerDown == null)
+	//only the button that started the drag may drop the piece - releasing a
+	//right/middle button mid-drag must not count as a drop
+	if(e.button != 0 || pointerDown == null)
 		return;
 
 	if(pointerDown.dragging)
@@ -875,7 +930,8 @@ function initialize(){
 		board.set(elem[i].id, null);
 
 		elem[i].addEventListener("pointerdown", e => {
-			if(window.boardLocked || viewIndex !== moveHistory.length)
+			//left button only - right-click is reserved for cancelling a drag
+			if(e.button != 0 || window.boardLocked || viewIndex !== moveHistory.length)
 				return;
 
 			const piece = board.get(elem[i].id);
@@ -919,7 +975,10 @@ function checkMove(start, end, boardArr = board){
 	return checkMoveNoHeckCheck(start, end, boardArr) && !inHeck(moveBoardNoCheck(start, end, boardArr), boardArr.get(start).color);
 }
 
-function move(start, end, boardArr = board){
+//refresh=false is for replaying known-good history (undo, rewind/redo): it
+//skips the full valid-move recompute and the board redraw per ply, both of
+//which only matter for the final position - the caller does each once at the end
+function move(start, end, boardArr = board, refresh = true){
 	if(!(checkMoveNoHeckCheck(start, end, boardArr) && !inHeck(moveBoardNoCheck(start, end, boardArr), boardArr.get(start).color)))
 		return false;
 
@@ -960,27 +1019,13 @@ function move(start, end, boardArr = board){
 	if(real){
 		gameHash ^= pieceHash(boardArr.get(end), end);
 		gameHash ^= epHash(boardArr) ^ castleRightsHash(boardArr) ^ ZOBRIST.side;
-		updateBoard();
+		if(refresh)
+			updateBoard();
 	}
 
-	if(checkMateCheck(boardArr, otherColor(boardArr.get(end).color)) && real){
-		console.log("checkmate!");
-	}
+	if(refresh)
+		updateValidMoveArray(boardArr);
 
-	if(staleMateCheck(boardArr, otherColor(boardArr.get(end).color)) && real){
-		console.log("stalemate!");
-	}
-	
-	boardArr.forEach((v1, k1) => {
-		if(v1 != null){
-			v1.validMoves.length = 0;
-			boardArr.forEach((v2,k2) => {
-				if(checkMove(k1, k2, boardArr))
-					v1.validMoves.push(k2);
-			});
-		}	
-	});
-	
 	return true;
 }
 
@@ -1284,40 +1329,26 @@ function checkMoveNoHeckCheck(start, end, boardArr = board){
 	return true;
 }
 	
+//the single hottest function in the engine - every legality test funnels
+//through here, so it bails on the first attacker instead of scanning on
 function inHeck(boardArr = board, color){
-	if(boardArr.length == 0)
+	let kingPos = null;
+
+	for(const [sq, piece] of boardArr)
+		if(piece != null && piece.type == "k" && piece.color == color){
+			kingPos = sq;
+			break;
+		}
+
+	if(kingPos == null)
 		return false;
-	
-	var kingPos;
-	let returnStatement = false;
-	
-	if(color == "w"){
-		boardArr.forEach((v, k) => {
-			if(v != null && v.type == "k" && v.color == "w")
-				kingPos = k;
-		});
-		
-		boardArr.forEach((v, k) => {
-			if(v != null && v.color == "b"){
-				if(checkMoveNoHeckCheck(k, kingPos, boardArr))
-					returnStatement = true;
-			}
-		});
-	} else if(color == "b"){
-		boardArr.forEach((v, k) => {
-			if(v != null && v.type == "k" && v.color == "b")
-				kingPos = k;
-		});
-		
-		boardArr.forEach((v, k) => {
-			if(v != null && v.color == "w"){
-				if(checkMoveNoHeckCheck(k, kingPos, boardArr))
-					returnStatement = true;
-			}
-		});
-	} else throw ("undefined color");
-	return returnStatement;
-}	
+
+	for(const [sq, piece] of boardArr)
+		if(piece != null && piece.color != color && checkMoveNoHeckCheck(sq, kingPos, boardArr))
+			return true;
+
+	return false;
+}
 
 function checkMateCheck(boardArr = board, color){
 	
@@ -1345,24 +1376,25 @@ function otherColor(color){
 }
 
 function checkForValidMoves(boardArr = board, color){
-	
-	let returnStatement = false;
-	
-	boardArr.forEach((v1, k1) => {
-		boardArr.forEach((v2, k2) => {
-			let boardPos = new Map(boardArr);
-			if(v1 != null && v1.color == color && checkMove(k1, k2, boardPos))
-				returnStatement = true;
-		});
-	});
-	
-	return returnStatement;
+	//checkMove never mutates its board (it simulates on its own copy), so no
+	//defensive clone per pair - and one legal move is all this needs to find
+	for(const [k1, v1] of boardArr){
+		if(v1 == null || v1.color != color)
+			continue;
+
+		for(const k2 of boardArr.keys())
+			if(checkMove(k1, k2, boardArr))
+				return true;
+	}
+
+	return false;
 }
 	
 	//start
 	
 	orientBoard();
 	resetBoard();
+	updateValidMoveArray(); //resetBoard only places pieces, moves are derived here
 	updateBoard();
 	gameHash = zobristKey(board, player); //seeded once, XOR-updated from here on
 	recordPosition(); //starting position counts toward repetition too

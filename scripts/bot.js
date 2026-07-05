@@ -367,7 +367,9 @@ if(mode === "bot"){
 	function applyBotMove(from, to){
 		//captured before move() mutates the board - see the matching comment
 		//in init.js's completeMove()
-		const resetClock = board.get(to) != null || board.get(from).type == "p";
+		const capture = board.get(to) != null || (board.get(from).type == "p" && from.charAt(0) != to.charAt(0));
+		const resetClock = capture || board.get(from).type == "p";
+		lastMoveCapture = capture;
 
 		move(from, to);
 		moveHistory.push(from + to);
@@ -388,10 +390,25 @@ if(mode === "bot"){
 		recordPosition();
 		syncViewToLive(); //if the human wound the viewer back mid-think, snap it forward again
 
+		//same shortcut as init.js's finishTurn - the validMoves lists were just
+		//recomputed for this position, so mate/stalemate reads them directly
+		let anyMoves = false;
+		board.forEach(piece => {
+			if(piece != null && piece.color == player && piece.validMoves.length > 0)
+				anyMoves = true;
+		});
+
+		const inCheck = inHeck(board, player);
+		const mate = !anyMoves && inCheck;
+		const stale = !anyMoves && !inCheck;
+
+		if(typeof playSound == "function")
+			playSound(mate ? "checkmate" : inCheck ? "check" : capture ? "capture" : "move");
+
 		const winner = otherColor(player) == "w" ? "White" : "Black";
-		if(checkMateCheck(board, player))
+		if(mate)
 			showGameOverModal("Checkmate!", winner + " wins.");
-		else if(staleMateCheck(board, player))
+		else if(stale)
 			showGameOverModal("Stalemate!", "It's a draw.");
 		else if(halfmoveClock >= 100)
 			showGameOverModal("Draw", "50 moves with no pawn move or capture.");
