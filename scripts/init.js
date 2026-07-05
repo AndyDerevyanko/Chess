@@ -155,42 +155,42 @@ function rankToInt(i){
 	}	
 }
 
-function resetBoard(){
-	clearBoard(board);
-	
-	board.set("a1", new r("w", "a1"));
-	board.set("b1", new n("w", "b1"));
-	board.set("c1", new b("w", "c1"));
-	board.set("d1", new q("w", "d1"));
-	board.set("e1", new k("w", "e1"));
-	board.set("f1", new b("w", "f1"));
-	board.set("g1", new n("w", "g1"));
-	board.set("h1", new r("w", "h1"));
-	
+function resetBoard(boardArr = board){
+	clearBoard(boardArr);
+
+	boardArr.set("a1", new r("w", "a1"));
+	boardArr.set("b1", new n("w", "b1"));
+	boardArr.set("c1", new b("w", "c1"));
+	boardArr.set("d1", new q("w", "d1"));
+	boardArr.set("e1", new k("w", "e1"));
+	boardArr.set("f1", new b("w", "f1"));
+	boardArr.set("g1", new n("w", "g1"));
+	boardArr.set("h1", new r("w", "h1"));
+
 	for(let i = 0; i < 8; i++){
-		board.set(intToRank(i)+"2", new p("w", intToRank(i)+"2"));
+		boardArr.set(intToRank(i)+"2", new p("w", intToRank(i)+"2"));
 	}
-	
-	board.set("a8", new r("b", "a8"));
-	board.set("b8", new n("b", "b8"));
-	board.set("c8", new b("b", "c8"));
-	board.set("d8", new q("b", "d8"));
-	board.set("e8", new k("b", "e8"));
-	board.set("f8", new b("b", "f8"));
-	board.set("g8", new n("b", "g8"));
-	board.set("h8", new r("b", "h8"));
-	
+
+	boardArr.set("a8", new r("b", "a8"));
+	boardArr.set("b8", new n("b", "b8"));
+	boardArr.set("c8", new b("b", "c8"));
+	boardArr.set("d8", new q("b", "d8"));
+	boardArr.set("e8", new k("b", "e8"));
+	boardArr.set("f8", new b("b", "f8"));
+	boardArr.set("g8", new n("b", "g8"));
+	boardArr.set("h8", new r("b", "h8"));
+
 	for(let i = 0; i < 8; i++){
-		board.set(intToRank(i)+"7", new p("b", intToRank(i)+"7"));
+		boardArr.set(intToRank(i)+"7", new p("b", intToRank(i)+"7"));
 	}
-	
-	board.forEach((v1, k1) =>{
+
+	boardArr.forEach((v1, k1) =>{
 		if(v1 != null)
-			board.forEach((v2,k2) => {
-				if(checkMove(k1, k2))
+			boardArr.forEach((v2,k2) => {
+				if(checkMove(k1, k2, boardArr))
 					v1.validMoves.push(k2);
 			});
-	}); 
+	});
 }
 
 function clear(){
@@ -408,8 +408,8 @@ function drawPiece(p, s){
 	
 }
 
-function updateBoard(){
-	for(const [i,j] of board){
+function updateBoard(boardArr = board){
+	for(const [i,j] of boardArr){
 		drawPiece(j, i);
 	}
 }
@@ -490,6 +490,126 @@ function isThreefoldRepetition(){
 	return (positionCounts.get(gameHash) || 0) >= 3;
 }
 
+//piece type each promotion actually became, keyed by its ply index in
+//moveHistory - moveHistory only stores "e7e8"-style squares, so replaying a
+//game (rewind/redo/undo, all below) needs this to reconstruct the position
+let promotions = {};
+
+//how many plies of moveHistory are currently shown on the board. Equal to
+//moveHistory.length means "live" - anything less is just looking at an
+//earlier position. Rewind/redo/live only ever move this pointer and redraw;
+//they never touch board, player, or any other real game state
+let viewIndex = 0;
+
+//replays moveHistory[0..upToPly) from the standard start into a fresh Map,
+//entirely separate from the real board - used to render historical positions
+//without disturbing the live game
+function buildHistoryBoard(upToPly){
+	const temp = new Map();
+	resetBoard(temp);
+
+	for(let i = 0; i < upToPly; i++){
+		const from = moveHistory[i].slice(0, 2);
+		const to = moveHistory[i].slice(2, 4);
+		move(from, to, temp);
+		if(promotions[i] != null)
+			promote(to, promotions[i], temp);
+	}
+
+	return temp;
+}
+
+function renderHistoryBoard(){
+	updateBoard(buildHistoryBoard(viewIndex));
+
+	document.querySelectorAll(".in-check").forEach(el => el.classList.remove("in-check"));
+	if(viewIndex === moveHistory.length)
+		updateCheckHighlight();
+
+	clearMarkers();
+	selected = null;
+}
+
+//enables/disables the four history buttons to match viewIndex - Undo only
+//depends on there being a real move to take back
+function updateHistoryButtons(){
+	const set = (id, enabled) => {
+		const btn = document.getElementById(id);
+		if(btn != null)
+			btn.classList.toggle("locked", !enabled);
+	};
+
+	set("undo-btn", moveHistory.length > 0);
+	set("rewind-btn", viewIndex > 0);
+	set("redo-btn", viewIndex < moveHistory.length);
+	set("live-btn", viewIndex < moveHistory.length);
+}
+
+function stepHistoryView(delta){
+	viewIndex = Math.max(0, Math.min(moveHistory.length, viewIndex + delta));
+	renderHistoryBoard();
+	updateHistoryButtons();
+}
+
+function jumpToLive(){
+	viewIndex = moveHistory.length;
+	renderHistoryBoard();
+	updateHistoryButtons();
+}
+
+//called after every real move (finishTurn/applyBotMove) - if the viewer had
+//wound back into history, a new move snaps it back to the live position
+//rather than leaving it pointed at a now-stale board
+function syncViewToLive(){
+	const wasReviewing = viewIndex !== moveHistory.length;
+	viewIndex = moveHistory.length;
+	if(wasReviewing)
+		renderHistoryBoard();
+	updateHistoryButtons();
+}
+
+//actual undo - takes back exactly the last real ply. Rebuilds the whole game
+//from the trimmed moveHistory rather than trying to reverse one move in
+//place, since that automatically gets captures/castling/en passant/promotion
+//right the same way replaying always does
+function undoMove(){
+	if(moveHistory.length === 0)
+		return;
+
+	moveHistory.pop();
+	delete promotions[moveHistory.length];
+
+	resetBoard(board);
+	player = "w";
+	halfmoveClock = 0;
+	positionCounts = new Map();
+	gameHash = zobristKey(board, player);
+	recordPosition();
+
+	for(let i = 0; i < moveHistory.length; i++){
+		const from = moveHistory[i].slice(0, 2);
+		const to = moveHistory[i].slice(2, 4);
+		const resetClock = board.get(to) != null || board.get(from).type == "p";
+
+		move(from, to);
+		halfmoveClock = resetClock ? 0 : halfmoveClock + 1;
+
+		if(promotions[i] != null)
+			promote(to, promotions[i]);
+
+		player = otherColor(player);
+		recordPosition();
+	}
+
+	lastOpeningName = currentOpeningName(moveHistory); //resync without re-toasting
+	window.boardLocked = false;
+	closeModal("game-over-modal"); //undo can revive a game that had just ended
+
+	viewIndex = moveHistory.length;
+	renderHistoryBoard();
+	updateHistoryButtons();
+}
+
 //reports the current position's book name (see scripts/openings.js), if any -
 //called after every real move, from either side, so it reflects what's
 //actually on the board rather than guessing ahead at a reply
@@ -557,7 +677,9 @@ function showPromotionPicker(sq, onChosen){
 		if(btn == null)
 			return;
 
-		promote(sq, btn.getAttribute("data-promote"));
+		const type = btn.getAttribute("data-promote");
+		promote(sq, type);
+		promotions[moveHistory.length - 1] = type;
 		updateValidMoveArray(board);
 		updateBoard();
 		closeModal("promotion-modal");
@@ -620,6 +742,7 @@ function finishTurn(){
 	player = otherColor(player);
 	updateOpeningName();
 	recordPosition();
+	syncViewToLive();
 
 	const winner = otherColor(player) == "w" ? "White" : "Black";
 	const mate = checkMateCheck(board, player);
@@ -752,7 +875,7 @@ function initialize(){
 		board.set(elem[i].id, null);
 
 		elem[i].addEventListener("pointerdown", e => {
-			if(window.boardLocked)
+			if(window.boardLocked || viewIndex !== moveHistory.length)
 				return;
 
 			const piece = board.get(elem[i].id);
@@ -761,7 +884,7 @@ function initialize(){
 		});
 
 		elem[i].addEventListener("click", () => {
-			if(window.boardLocked)
+			if(window.boardLocked || viewIndex !== moveHistory.length)
 				return;
 
 			const sq = elem[i].id;
@@ -1243,6 +1366,21 @@ function checkForValidMoves(boardArr = board, color){
 	updateBoard();
 	gameHash = zobristKey(board, player); //seeded once, XOR-updated from here on
 	recordPosition(); //starting position counts toward repetition too
+	updateHistoryButtons();
+
+	//history controls - each just ignores the click while its own .locked
+	//class says there's nothing to do (mirrors the .choice.locked pattern
+	//used for the difficulty/mode choice rows)
+	const wireHistoryButton = (id, action) => {
+		const btn = document.getElementById(id);
+		if(btn != null)
+			btn.addEventListener("click", () => { if(!btn.classList.contains("locked")) action(); });
+	};
+
+	wireHistoryButton("undo-btn", undoMove);
+	wireHistoryButton("rewind-btn", () => stepHistoryView(-1));
+	wireHistoryButton("redo-btn", () => stepHistoryView(1));
+	wireHistoryButton("live-btn", jumpToLive);
 	
 	
 	// move("e2","e4");

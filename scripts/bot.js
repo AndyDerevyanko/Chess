@@ -376,6 +376,7 @@ if(mode === "bot"){
 
 		if(needsPromotion(to)){
 			promote(to, "q");
+			promotions[moveHistory.length - 1] = "q";
 			updateValidMoveArray(board);
 			updateBoard();
 		}
@@ -385,6 +386,7 @@ if(mode === "bot"){
 		player = otherColor(player);
 		updateCheckHighlight();
 		recordPosition();
+		syncViewToLive(); //if the human wound the viewer back mid-think, snap it forward again
 
 		const winner = otherColor(player) == "w" ? "White" : "Black";
 		if(checkMateCheck(board, player))

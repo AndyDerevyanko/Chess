@@ -41,17 +41,19 @@ The site follows this navigation flow:
 
 ```
 Home (index.html)
- ├── Puzzles / Drills (puzzles.html)   → one template puzzle, the rest locked
- ├── Settings (settings.html)          → one option per category, toggles are cosmetic
- ├── Game Archive (archive.html)       → one example saved game
+ ├── Puzzles / Drills (puzzles.html)
+ ├── Settings (settings.html)
+ ├── Game Archive (archive.html)
  └── Game Setup (setup.html)
-      ├── Local vs Bot ─┐
+      ├── Local vs Bot ─┐  Novice/Club/Master difficulty
       └── Pass & Play  ─┴→ Game Board (game.html)   ← the real, playable board
                              └→ Post-Game Analysis (analysis.html)
                                   └→ back to the Archive
 ```
 
 "About" is a popup on the home page instead of its own page.
+
+The Game Board is where most of the real engine lives: legal move generation (click, drag-and-drop, and promotion), check/checkmate/stalemate detection, the 50-move rule and threefold repetition, an offline opening-name lookup (toasts the current position's book name as it changes), and Undo/Rewind/Redo/Live controls for reviewing a game in progress without disturbing it. The bot opponent picks from a full offline ECO opening book early on, then falls back to a depth-limited minimax search with a tapered positional evaluation once it's out of book.
 
 ## 🧩 Features
 

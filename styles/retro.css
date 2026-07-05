@@ -487,6 +487,15 @@ body::after{
 .choice:hover{ background: var(--cream-dark); }
 .choice:active{ transform: translate(.1vmin,.2vmin); }
 
+/* icon-only variant (the game board's history scrubber) - square instead of
+   a text pill squeezed down to just its icon */
+.choice.icon-only{
+	padding: .9vmin;
+	gap: 0;
+}
+
+.choice.icon-only .icon{ width: 1.3em; height: 1.3em; }
+
 .choice.selected{
 	background: var(--brick);
 	color: var(--paper);

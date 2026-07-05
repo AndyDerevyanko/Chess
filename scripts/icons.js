@@ -49,7 +49,14 @@ const ICONS = {
 	rewind: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 12l8-6v12l-8-6zM3 12l8-6v12l-8-6z"/></svg>',
 	forward: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 12l-8-6v12l8-6zm8 0l-8-6v12l8-6z"/></svg>',
 	prev: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 5l-7 7 7 7 1.4-1.4L10.8 12l5.6-5.6L15 5z"/></svg>',
-	next: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 5l7 7-7 7-1.4-1.4L13.2 12 7.6 6.4 9 5z"/></svg>'
+	next: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 5l7 7-7 7-1.4-1.4L13.2 12 7.6 6.4 9 5z"/></svg>',
+
+	//single-step "media" icons (bar + one triangle) for the game board's
+	//history scrubber - distinct from prev/next (plain chevrons) and
+	//rewind/forward (double triangles, used for analysis.html's stubbed
+	//start/end controls) so the working buttons don't look like those
+	stepBack: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2.2v14H6V5zm12 .3v13.4L9.6 12 18 5.3z"/></svg>',
+	stepForward: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.8 5h2.2v14h-2.2V5zM6 5.3L14.4 12 6 18.7V5.3z"/></svg>'
 };
 
 function renderIcons(root){
