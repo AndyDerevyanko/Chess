@@ -16,7 +16,6 @@
 - [The Pages](#-the-pages)
 - [Features](#-features)
 - [How It's Built](#-how-its-built)
-- [Reusable Bits](#-reusable-bits)
 - [What's Next](#-whats-next)
 
 ## ❓ What is Offline Chess?
@@ -65,10 +64,6 @@ The Game Board is where most of the real engine lives: legal move generation (cl
 - Runs fully offline
 
 ## 👨‍💻 How It's Built
-
-In progress
-
-### Where things live
 
 In progress
 
