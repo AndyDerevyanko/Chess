@@ -52,7 +52,7 @@ Home (index.html)
 
 "About" is a popup on the home page instead of its own page.
 
-The Game Board is where most of the real engine lives: legal move generation (click, drag-and-drop, and promotion), check/checkmate/stalemate detection, the 50-move rule and threefold repetition, an offline opening-name lookup (toasts the current position's book name as it changes), and Undo/Rewind/Redo/Live controls for reviewing a game in progress without disturbing it. The bot opponent picks from a full offline ECO opening book early on, then falls back to a depth-limited minimax search with a tapered positional evaluation once it's out of book.
+The game board is where most of the magic is: legal move generation (click, drag-and-drop, and promotion), check/checkmate/stalemate detection, the 50-move rule and repetition, an offline opening-name lookup (toasts the current position's book name as it changes), and Undo/Rewind/Redo/Live controls for reviewing a game in progress without disturbing it. When playing against the bot, players will see that it chooses its opening from a full offline opening database early on, then falls back to a depth-limited minimax search with positional evaluation once it's out of book.
 
 ## 🧩 Features
 
