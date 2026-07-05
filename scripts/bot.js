@@ -1,4 +1,5 @@
-//novice bot for mode=bot, 2-ply minimax on material, other difficulty tiers stay locked in setup.html
+//bot for mode=bot, minimax with depth per difficulty (novice/club/master -
+//engine stays locked in setup.html, no depth mapped for it yet)
 //inert on every other page/mode - only does anything once player color check below passes
 
 const mode = new URLSearchParams(window.location.search).get("mode");
@@ -6,7 +7,9 @@ const mode = new URLSearchParams(window.location.search).get("mode");
 if(mode === "bot"){
 
 	const BOT_COLOR = "b";
-	const BOT_DEPTH = 2;
+	const DEPTH_BY_DIFFICULTY = { novice: 2, club: 3, master: 4 };
+	const difficulty = new URLSearchParams(window.location.search).get("difficulty");
+	const BOT_DEPTH = DEPTH_BY_DIFFICULTY[difficulty] || DEPTH_BY_DIFFICULTY.novice;
 
 	function clonePiece(orig){
 		if(orig == null)
@@ -30,15 +33,31 @@ if(mode === "bot"){
 		return copy;
 	}
 
-	//validMoves is only trustworthy right after updateValidMoveArray runs on that exact board
+	//own move generator instead of updateValidMoveArray - that recomputes
+	//BOTH colors' moves every call, and we only ever want one side at a time here
 	function legalMoves(boardArr, color){
-		updateValidMoveArray(boardArr);
 		const moves = [];
 		boardArr.forEach((piece, from) => {
-			if(piece != null && piece.color == color)
-				piece.validMoves.forEach(to => moves.push([from, to]));
+			if(piece == null || piece.color != color)
+				return;
+			boardArr.forEach((_, to) => {
+				if(checkMove(from, to, boardArr))
+					moves.push([from, to]);
+			});
 		});
 		return moves;
+	}
+
+	//cheap MVV-LVA-ish ordering so alpha-beta prunes far more - captures first,
+	//biggest victim/smallest attacker first, quiet moves left in generated order
+	function orderMoves(boardArr, moves){
+		return moves.slice().sort((a, b) => {
+			const capA = boardArr.get(a[1]);
+			const capB = boardArr.get(b[1]);
+			const scoreA = capA != null ? capA.material * 10 - boardArr.get(a[0]).material : -1;
+			const scoreB = capB != null ? capB.material * 10 - boardArr.get(b[0]).material : -1;
+			return scoreB - scoreA;
+		});
 	}
 
 	function evaluate(boardArr){
@@ -50,14 +69,17 @@ if(mode === "bot"){
 		return score;
 	}
 
-	//alpha-beta, terminal (checkmate/stalemate) only checked where we already generated moves for real
+	//checkmate/stalemate has to be checked at every ply, leaf included - skipping it
+	//at the leaf (the old bug) means the search is blind to "opponent's very next
+	//reply is mate", which is exactly how it walked into things like Scholar's Mate
 	function search(boardArr, depth, alpha, beta, color){
-		if(depth === 0)
-			return evaluate(boardArr);
+		const moves = orderMoves(boardArr, legalMoves(boardArr, color));
 
-		const moves = legalMoves(boardArr, color);
 		if(moves.length === 0)
 			return inHeck(boardArr, color) ? (color == BOT_COLOR ? -9000 - depth : 9000 + depth) : 0;
+
+		if(depth === 0)
+			return evaluate(boardArr);
 
 		const maximizing = color == BOT_COLOR;
 		let best = maximizing ? -Infinity : Infinity;
@@ -82,8 +104,8 @@ if(mode === "bot"){
 		return best;
 	}
 
-	function chooseBotMove(){
-		const moves = legalMoves(board, BOT_COLOR);
+	function chooseBotMove(depth){
+		const moves = orderMoves(board, legalMoves(board, BOT_COLOR));
 		let bestMove = null;
 		let bestScore = -Infinity;
 		let alpha = -Infinity;
@@ -93,7 +115,7 @@ if(mode === "bot"){
 			moveNoCheck(from, to, next);
 			if(needsPromotion(to, next))
 				promote(to, "q", next);
-			const score = search(next, BOT_DEPTH - 1, alpha, Infinity, otherColor(BOT_COLOR));
+			const score = search(next, depth - 1, alpha, Infinity, otherColor(BOT_COLOR));
 
 			if(score > bestScore){
 				bestScore = score;
@@ -105,35 +127,55 @@ if(mode === "bot"){
 		return bestMove;
 	}
 
+	//shared tail end for both a book move and a searched move - applies it to
+	//the real board, handles promotion, and passes the turn back
+	function applyBotMove(from, to){
+		move(from, to);
+		moveHistory.push(from + to);
+		updateOpeningName();
+
+		if(needsPromotion(to)){
+			promote(to, "q");
+			updateValidMoveArray(board);
+			updateBoard();
+		}
+
+		player = otherColor(player);
+		updateCheckHighlight();
+
+		const winner = otherColor(player) == "w" ? "White" : "Black";
+		if(checkMateCheck(board, player))
+			showGameOverModal("Checkmate!", winner + " wins.");
+		else if(staleMateCheck(board, player))
+			showGameOverModal("Stalemate!", "It's a draw.");
+
+		window.boardLocked = false;
+	}
+
 	window.afterPlayerMove = function(){
 		if(player !== BOT_COLOR)
 			return;
 
 		window.boardLocked = true;
+
+		//book moves stay quiet here - applyBotMove's own updateOpeningName() call
+		//announces whatever the resulting position is actually named, once it's
+		//actually been played, instead of previewing a guess before it lands
+		const book = typeof pickBookMove === "function" ? pickBookMove(moveHistory) : null;
+		if(book != null){
+			setTimeout(() => applyBotMove(book.from, book.to), 400);
+			return;
+		}
+
 		showToast("Bot is thinking...");
 
 		//let the toast paint before the search blocks the main thread
 		setTimeout(() => {
-			const chosen = chooseBotMove();
-			if(chosen != null){
-				move(chosen[0], chosen[1]);
-
-				if(needsPromotion(chosen[1])){
-					promote(chosen[1], "q");
-					updateValidMoveArray(board);
-					updateBoard();
-				}
-
-				player = otherColor(player);
-				updateCheckHighlight();
-
-				const winner = otherColor(player) == "w" ? "White" : "Black";
-				if(checkMateCheck(board, player))
-					showGameOverModal("Checkmate!", winner + " wins.");
-				else if(staleMateCheck(board, player))
-					showGameOverModal("Stalemate!", "It's a draw.");
-			}
-			window.boardLocked = false;
+			const chosen = chooseBotMove(BOT_DEPTH);
+			if(chosen != null)
+				applyBotMove(chosen[0], chosen[1]);
+			else
+				window.boardLocked = false;
 		}, 60);
 	};
 }

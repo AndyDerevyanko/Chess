@@ -93,10 +93,23 @@ document.querySelectorAll(".toggle").forEach(toggle => {
 
 //clicking a .mode-card selects it and points the start button at ?mode=<data-mode>
 
+//mode and difficulty are picked independently, so the start link is rebuilt
+//from whichever of each was last clicked rather than overwriting the whole
+//thing - read from the clicked element directly rather than re-querying
+//".selected", since the generic .choice-row handler (elsewhere in this file)
+//that actually applies ".selected" fires on the row, after this button-level
+//listener, so ".selected" would still be one click stale here
+let selectedMode = document.querySelector(".mode-card.selected")?.getAttribute("data-mode") || "pass";
+let selectedDifficulty = document.querySelector(".choice[data-difficulty].selected")?.getAttribute("data-difficulty") || "novice";
+
+function updateStartHref(){
+	const startBtn = document.getElementById("start-game-btn");
+	if(startBtn != null)
+		startBtn.setAttribute("href", "game.html?mode=" + selectedMode + "&difficulty=" + selectedDifficulty);
+}
+
 function wireModeCards(){
 	const cards = document.querySelectorAll(".mode-card[data-mode]");
-	const startBtn = document.getElementById("start-game-btn");
-
 	if(cards.length === 0)
 		return;
 
@@ -104,14 +117,31 @@ function wireModeCards(){
 		card.addEventListener("click", () => {
 			cards.forEach(c => c.classList.remove("selected"));
 			card.classList.add("selected");
+			selectedMode = card.getAttribute("data-mode");
+			updateStartHref();
+		});
+	});
+}
 
-			if(startBtn != null)
-				startBtn.setAttribute("href", "game.html?mode=" + card.getAttribute("data-mode"));
+function wireDifficultyChoices(){
+	const choices = document.querySelectorAll(".choice[data-difficulty]");
+	if(choices.length === 0)
+		return;
+
+	choices.forEach(choice => {
+		choice.addEventListener("click", () => {
+			if(choice.classList.contains("locked"))
+				return;
+
+			selectedDifficulty = choice.getAttribute("data-difficulty");
+			updateStartHref();
 		});
 	});
 }
 
 wireModeCards();
+wireDifficultyChoices();
+updateStartHref();
 
 //reads ?mode= from the url and fills any [data-mode-label], purely cosmetic
 

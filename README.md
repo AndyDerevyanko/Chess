@@ -55,12 +55,12 @@ Home (index.html)
 
 ## 🧩 Features
 
-- A Retro arcade-poster theme with a CRT scanline overlay
+- A Retro arcade-poster theme
 - A real chessboard with working move legality, check, and checkmate detection 
-- Two game modes on the setup screen: pass-and-play and vs-bot
-- Decorative mini-boards that reuse the exact same square colors as the real board
-- Styled popups driven by simple HTML attributes
-- Runs fully offline: no external fonts, no network calls anywhere
+- Two game modes: pass-and-play and vs-bot
+- Decorative mini-boards that use same theme as real baord
+- Styled popups w/ simple HTML + CSS
+- Runs fully offline
 
 ## 👨‍💻 How It's Built
 

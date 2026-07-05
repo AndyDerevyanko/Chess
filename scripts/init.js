@@ -367,6 +367,30 @@ function flipBoard(){
 //currently selected square, if any
 let selected = null;
 
+//"e2e4"-style log of every real move played, in order - used by the bot's
+//opening book (scripts/openings.js) to find how far the game still matches
+//a known line. Only ever appended to from completeMove() and bot.js's own
+//move application, never from search/simulation, so it only reflects the
+//actual game.
+let moveHistory = [];
+
+//last opening name actually toasted, so updateOpeningName only speaks up when
+//the name changes rather than repeating itself every move inside one line
+let lastOpeningName = null;
+
+//reports the current position's book name (see scripts/openings.js), if any -
+//called after every real move, from either side, so it reflects what's
+//actually on the board rather than guessing ahead at a reply
+function updateOpeningName(){
+	if(typeof currentOpeningName != "function")
+		return;
+
+	const name = currentOpeningName(moveHistory);
+	if(name != lastOpeningName && name != null)
+		showToast(name);
+	lastOpeningName = name;
+}
+
 function clearMarkers(){
 	Array.from(document.getElementsByClassName("marker")).forEach(el => el.remove());
 }
@@ -449,12 +473,16 @@ function showGameOverModal(title, sub){
 
 	document.getElementById("game-over-title").textContent = title;
 	document.getElementById("game-over-sub").textContent = sub;
-	openModal("game-over-modal");
+
+	//brief pause so the final move (and the check pulse on the mated king)
+	//is visible on the board for a moment before the modal covers it
+	setTimeout(() => openModal("game-over-modal"), 700);
 }
 
 //shared by click-to-move and drag-to-move once a legal (from, to) is chosen
 function completeMove(from, to){
 	move(from, to);
+	moveHistory.push(from + to);
 	clearMarkers();
 	selected = null;
 
@@ -466,6 +494,7 @@ function completeMove(from, to){
 
 function finishTurn(){
 	player = otherColor(player);
+	updateOpeningName();
 
 	const winner = otherColor(player) == "w" ? "White" : "Black";
 	const mate = checkMateCheck(board, player);

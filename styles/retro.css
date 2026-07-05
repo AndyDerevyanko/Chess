@@ -677,6 +677,20 @@ body::after{
 	to  { opacity: 1; transform: scale(1)  translateY(0);    }
 }
 
+/* checkmate/stalemate gets a bigger, bouncier entrance than a normal modal -
+   it's a one-off, attention-grabbing moment rather than routine UI chrome.
+   showGameOverModal() also delays opening this one so the final move is
+   visible on the board for a beat first, instead of being covered instantly */
+#game-over-modal .modal-box{
+	animation: gameOverIn .45s cubic-bezier(.26,1.6,.42,1) both;
+}
+
+@keyframes gameOverIn{
+	from{ opacity: 0; transform: scale(.55) translateY(30px); }
+	60% { opacity: 1; transform: scale(1.06) translateY(-4px); }
+	to  { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
 .modal-box h2{
 	text-transform: uppercase;
 	letter-spacing: .2em;
