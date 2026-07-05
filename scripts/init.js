@@ -214,6 +214,101 @@ function arrToPos(i){
 	return intToRank(i[0])+ String(i[1]+1);
 }
 
+//zobrist hashing - every position maps to a single 64-bit integer. each
+//(piece, square) pair gets a fixed random key and a position's hash is the
+//XOR of the keys of everything on the board, plus side to move, castling
+//rights and en passant files. a move updates the hash by XORing only what
+//changed (see move()) instead of rehashing the board, and two positions are
+//identical iff their hashes are equal, so repetition detection is a single
+//integer comparison instead of walking 64 squares
+const Z_MASK = (1n << 64n) - 1n;
+
+const ZOBRIST = (() => {
+	//xorshift64 with a fixed seed - keys just need to be stable and well spread
+	let s = 88172645463325252n;
+	function rand(){
+		s = s ^ ((s << 13n) & Z_MASK);
+		s = s ^ (s >> 7n);
+		s = s ^ ((s << 17n) & Z_MASK);
+		return s;
+	}
+
+	const piece = {};
+	for(const color of ["w", "b"])
+		for(const type of ["p", "n", "b", "r", "q", "k"]){
+			const keys = [];
+			for(let i = 0; i < 64; i++)
+				keys.push(rand());
+			piece[color + type] = keys;
+		}
+
+	const ep = [];
+	for(let i = 0; i < 8; i++)
+		ep.push(rand());
+
+	return {
+		piece,
+		ep,
+		castle: { wk: rand(), wq: rand(), bk: rand(), bq: rand() },
+		side: rand()
+	};
+})();
+
+function pieceHash(piece, sq){
+	return ZOBRIST.piece[piece.color + piece.type][posToNum(sq)];
+}
+
+//castling rights, read from the same flags the move legality reads
+function castleRightsHash(boardArr){
+	let h = 0n;
+
+	const wk = boardArr.get("e1");
+	if(wk != null && wk.type == "k" && wk.color == "w" && !wk.hasMoved){
+		const kr = boardArr.get("h1");
+		const qr = boardArr.get("a1");
+		if(kr != null && kr.type == "r" && kr.color == "w" && !kr.hasMoved)
+			h ^= ZOBRIST.castle.wk;
+		if(qr != null && qr.type == "r" && qr.color == "w" && !qr.hasMoved)
+			h ^= ZOBRIST.castle.wq;
+	}
+
+	const bk = boardArr.get("e8");
+	if(bk != null && bk.type == "k" && bk.color == "b" && !bk.hasMoved){
+		const kr = boardArr.get("h8");
+		const qr = boardArr.get("a8");
+		if(kr != null && kr.type == "r" && kr.color == "b" && !kr.hasMoved)
+			h ^= ZOBRIST.castle.bk;
+		if(qr != null && qr.type == "r" && qr.color == "b" && !qr.hasMoved)
+			h ^= ZOBRIST.castle.bq;
+	}
+
+	return h;
+}
+
+//en passant vulnerability - the file of any pawn that just double-moved
+function epHash(boardArr){
+	let h = 0n;
+	boardArr.forEach((piece, sq) => {
+		if(piece != null && piece.type == "p" && piece.twoSquareMoved)
+			h ^= ZOBRIST.ep[rankToInt(sq.charAt(0))];
+	});
+	return h;
+}
+
+//full recompute - seeds the game hash and cross-checks the incremental
+//updates in tests; actual play only ever XORs deltas in move()/promote()
+function zobristKey(boardArr, sideToMove){
+	let h = sideToMove == "b" ? ZOBRIST.side : 0n;
+	boardArr.forEach((piece, sq) => {
+		if(piece != null)
+			h ^= pieceHash(piece, sq);
+	});
+	return h ^ castleRightsHash(boardArr) ^ epHash(boardArr);
+}
+
+//running hash of the real game position, XOR-updated as moves are made
+let gameHash = 0n;
+
 function clearBoard(b){
 	for(let i = 0; i < 64; i++){
 		b.set(numToPos(i), null);
@@ -378,6 +473,23 @@ let moveHistory = [];
 //the name changes rather than repeating itself every move inside one line
 let lastOpeningName = null;
 
+//plies since the last pawn move or capture - 100 (50 full moves by each side)
+//with neither is an automatic draw
+let halfmoveClock = 0;
+
+//how many times each position has occurred, keyed by zobrist hash, for
+//threefold repetition. The hash covers side to move, castling rights and
+//en passant, so "same position" here means same in the full rules sense
+let positionCounts = new Map();
+
+function recordPosition(){
+	positionCounts.set(gameHash, (positionCounts.get(gameHash) || 0) + 1);
+}
+
+function isThreefoldRepetition(){
+	return (positionCounts.get(gameHash) || 0) >= 3;
+}
+
 //reports the current position's book name (see scripts/openings.js), if any -
 //called after every real move, from either side, so it reflects what's
 //actually on the board rather than guessing ahead at a reply
@@ -415,12 +527,19 @@ function needsPromotion(sq, boardArr = board){
 
 function promote(sq, type, boardArr = board){
 	const color = boardArr.get(sq).color;
+
+	if(boardArr == board)
+		gameHash ^= pieceHash(boardArr.get(sq), sq); //pawn out
+
 	switch(type){
 		case "n": boardArr.set(sq, new n(color, sq)); break;
 		case "b": boardArr.set(sq, new b(color, sq)); break;
 		case "r": boardArr.set(sq, new r(color, sq)); break;
 		default:  boardArr.set(sq, new q(color, sq)); break;
 	}
+
+	if(boardArr == board)
+		gameHash ^= pieceHash(boardArr.get(sq), sq); //promoted piece in
 }
 
 //promotion needs a human choice, so it pauses completeMove's turn-handoff
@@ -481,8 +600,13 @@ function showGameOverModal(title, sub){
 
 //shared by click-to-move and drag-to-move once a legal (from, to) is chosen
 function completeMove(from, to){
+	//captured before move() mutates the board - a pawn move covers en passant
+	//too, since e.p. is only ever performed by a pawn
+	const resetClock = board.get(to) != null || board.get(from).type == "p";
+
 	move(from, to);
 	moveHistory.push(from + to);
+	halfmoveClock = resetClock ? 0 : halfmoveClock + 1;
 	clearMarkers();
 	selected = null;
 
@@ -495,14 +619,17 @@ function completeMove(from, to){
 function finishTurn(){
 	player = otherColor(player);
 	updateOpeningName();
+	recordPosition();
 
 	const winner = otherColor(player) == "w" ? "White" : "Black";
 	const mate = checkMateCheck(board, player);
 	const stale = !mate && staleMateCheck(board, player);
+	const fifty = !mate && !stale && halfmoveClock >= 100;
+	const repetition = !mate && !stale && !fifty && isThreefoldRepetition();
 
 	//flipBoard() rebuilds the square divs from scratch, so the check
 	//highlight has to be applied after it, not before
-	if(!mate && !stale){
+	if(!mate && !stale && !fifty && !repetition){
 		if(typeof window.afterPlayerMove === "function")
 			window.afterPlayerMove();
 		else
@@ -515,6 +642,10 @@ function finishTurn(){
 		showGameOverModal("Checkmate!", winner + " wins.");
 	else if(stale)
 		showGameOverModal("Stalemate!", "It's a draw.");
+	else if(fifty)
+		showGameOverModal("Draw", "50 moves with no pawn move or capture.");
+	else if(repetition)
+		showGameOverModal("Draw", "Same position repeated three times.");
 }
 
 //drag-and-drop, alongside click-to-move. Native <img> dragging is turned off
@@ -666,19 +797,54 @@ function checkMove(start, end, boardArr = board){
 }
 
 function move(start, end, boardArr = board){
-	if(checkMoveNoHeckCheck(start, end, boardArr) && !inHeck(moveBoardNoCheck(start, end, boardArr), boardArr.get(start).color) /*&& boardArr.get(start).color == player*/){
-		moveNoCheck(start, end, boardArr);
-	} else return false; 
-			
-	
-	if(boardArr == board)
+	if(!(checkMoveNoHeckCheck(start, end, boardArr) && !inHeck(moveBoardNoCheck(start, end, boardArr), boardArr.get(start).color)))
+		return false;
+
+	const real = boardArr == board;
+
+	if(real){
+		//incremental zobrist update - XOR out exactly what this move touches,
+		//then XOR the new state back in below. The board is never rehashed
+		const mover = boardArr.get(start);
+		const captured = boardArr.get(end);
+
+		gameHash ^= pieceHash(mover, start);
+
+		if(captured != null){
+			gameHash ^= pieceHash(captured, end);
+		} else if(mover.type == "p" && start.charAt(0) != end.charAt(0)){
+			//en passant - the victim is beside the destination
+			const capSq = end.charAt(0) + start.charAt(1);
+			const victim = boardArr.get(capSq);
+			if(victim != null)
+				gameHash ^= pieceHash(victim, capSq);
+		}
+
+		if(mover.type == "k" && Math.abs(posToArr(start)[0] - posToArr(end)[0]) == 2){
+			const rookPath = { g1: ["h1","f1"], c1: ["a1","d1"], g8: ["h8","f8"], c8: ["a8","d8"] }[end];
+			const rook = boardArr.get(rookPath[0]);
+			if(rook != null)
+				gameHash ^= pieceHash(rook, rookPath[0]) ^ pieceHash(rook, rookPath[1]);
+		}
+
+		//old flag-derived state out, new state back in after the move
+		gameHash ^= epHash(boardArr) ^ castleRightsHash(boardArr);
+	}
+
+	moveNoCheck(start, end, boardArr);
+	updateMoveFlags(start, end, boardArr);
+
+	if(real){
+		gameHash ^= pieceHash(boardArr.get(end), end);
+		gameHash ^= epHash(boardArr) ^ castleRightsHash(boardArr) ^ ZOBRIST.side;
 		updateBoard();
-	
-	if(checkMateCheck(boardArr, otherColor(boardArr.get(end).color)) && boardArr == board){
+	}
+
+	if(checkMateCheck(boardArr, otherColor(boardArr.get(end).color)) && real){
 		console.log("checkmate!");
 	}
-	
-	if(staleMateCheck(boardArr, otherColor(boardArr.get(end).color)) && boardArr == board){
+
+	if(staleMateCheck(boardArr, otherColor(boardArr.get(end).color)) && real){
 		console.log("stalemate!");
 	}
 	
@@ -707,34 +873,21 @@ function updateValidMoveArray(boardArr = board){
 	});
 }
 
+//pure board mechanics - squares only, never piece flags. checkMove tests
+//moves on Map copies that still share piece objects with the real board, so
+//anything here that mutated a piece would corrupt real game state
 function moveNoCheck(start, end, boardArr = board){
-	//try{
 	if(boardArr.get(start) == null)
 		return;
-	
-	boardArr.forEach(v => {
-		if(v != null){
-			if(v.type == "p"){
-				v.twoSquareMoved = false;
-			}
-		}
-		})
-		
-	if(boardArr.get(end) != null){
-		if((Math.abs(posToArr(start)[1] - posToArr(end)[1]) == 2) && boardArr.get(start).type == "p")
-			boardArr.get(end).twoSquareMoved = true;
-		
-		if(boardArr.get(end).type == "r" || boardArr.get(start).type == "k")
-			boardArr.get(end).hasMoved = true;
 
+	//en passant - the captured pawn sits beside the destination, not on it
+	if(boardArr.get(start).type == "p" && checkMoveNoHeckCheck(start, end, boardArr) == enPassant)
+		boardArr.set(end.charAt(0) + start.charAt(1), null);
 
-		if(checkMoveNoHeckCheck(start, end) == enPassant)
-			boardArr.set(end.charAt(0) + start.charAt(1), null);
-	}
-	
 	boardArr.set(end, boardArr.get(start));
 	boardArr.set(start, null);
 
+	//castling - bring the rook along
 	if(boardArr.get(end).type == "k" && Math.abs(posToArr(start)[0] - posToArr(end)[0]) == 2){
 		if(end == "g1"){
 			boardArr.set("f1", boardArr.get("h1"));
@@ -749,12 +902,37 @@ function moveNoCheck(start, end, boardArr = board){
 			boardArr.set("d8", boardArr.get("a8"));
 			boardArr.set("a8", null);
 		}
-			
 	}
-	//} catch(error) {
-		//console.log(boardArr);
-		//console.log(start, end);
-	//}
+}
+
+//the state transitions that outlive the move: en passant windows open and
+//close, kings and rooks spend their castling rights. Only called where a
+//move is actually being kept - move() for the real game, and the bot's
+//search, which deep-clones its boards first - never from checkMove's
+//shared-piece hypotheticals (see moveNoCheck comment)
+function updateMoveFlags(start, end, boardArr = board){
+	boardArr.forEach(piece => {
+		if(piece != null && piece.type == "p")
+			piece.twoSquareMoved = false;
+	});
+
+	const mover = boardArr.get(end);
+	if(mover == null)
+		return;
+
+	if(mover.type == "p" && Math.abs(posToArr(start)[1] - posToArr(end)[1]) == 2)
+		mover.twoSquareMoved = true;
+
+	if(mover.type == "k" || mover.type == "r"){
+		mover.hasMoved = true;
+
+		//castling spends the rook's rights too
+		if(mover.type == "k" && Math.abs(posToArr(start)[0] - posToArr(end)[0]) == 2){
+			const rook = boardArr.get(end == "g1" ? "f1" : end == "c1" ? "d1" : end == "g8" ? "f8" : "d8");
+			if(rook != null)
+				rook.hasMoved = true;
+		}
+	}
 }
 
 function moveBoardNoCheck(start, end, boardArr = board){
@@ -945,33 +1123,38 @@ function checkMoveNoHeckCheck(start, end, boardArr = board){
 			break;
 		}
 		case "k": {
-			if(!((Math.abs(x1-x2) == 1 || Math.abs(x1-x2) == 0) && (Math.abs(y1-y2) == 1 || Math.abs(y1-y2) == 0))){
-				if(first.color == "w"){
-					if(Math.abs(x1-x2) == 2 && start == "e1" && boardArr.get(start).hasMoved == false && !first.inCheck()){
-						if(end == "g1"){
-							if(boardArr.get("h1") == null || boardArr.get("h1").type != "r" || boardArr.get("h1").hasMoved)
-								if(boardArr.get("f1") != null || boardArr.get("g1") != null)
-									return false;
-						} else if(end == "c1") {
-							if(boardArr.get("a1") == null || boardArr.get("a1").type != "r" || boardArr.get("a1").hasMoved)
-								if(boardArr.get("b1") != null || boardArr.get("c1") != null || boardArr.get("d1") != null)
-									return false;
-						} else return false;
-					} else return false;
-				} else {
-					if(Math.abs(x1-x2) == 2 && start == "e8" && boardArr.get(start).hasMoved == false && !first.inCheck()){
-						if(end == "g8") {
-							if(boardArr.get("h8") == null || boardArr.get("h8").type != "r" || boardArr.get("h8").hasMoved)
-								if(boardArr.get("f8") != null || boardArr.get("g8") != null)
-									return false;
-						} else if(end == "c8") {
-							if(boardArr.get("a8") == null || boardArr.get("a8").type != "r" || boardArr.get("a8").hasMoved)
-								if(boardArr.get("b8") != null || boardArr.get("c8") != null || boardArr.get("d8") != null)
-									return false;
-						} else return false;
-					} else return false;
-				}
-			}
+			//normal one-square step - the generic checks above already cover it
+			if(Math.abs(x1-x2) <= 1 && Math.abs(y1-y2) <= 1)
+				break;
+
+			//castling: two squares sideways off the home square, king never
+			//moved and not in check, own unmoved rook in the corner, path
+			//clear, and the square the king crosses not attacked either
+			if(Math.abs(x1-x2) != 2 || y1 != y2)
+				return false;
+
+			const rank = first.color == "w" ? "1" : "8";
+
+			if(start != "e" + rank || first.hasMoved || inHeck(boardArr, first.color))
+				return false;
+
+			if(end == "g" + rank){
+				const rook = boardArr.get("h" + rank);
+				if(rook == null || rook.type != "r" || rook.color != first.color || rook.hasMoved)
+					return false;
+				if(boardArr.get("f" + rank) != null || boardArr.get("g" + rank) != null)
+					return false;
+				if(inHeck(moveBoardNoCheck(start, "f" + rank, boardArr), first.color))
+					return false;
+			} else if(end == "c" + rank){
+				const rook = boardArr.get("a" + rank);
+				if(rook == null || rook.type != "r" || rook.color != first.color || rook.hasMoved)
+					return false;
+				if(boardArr.get("b" + rank) != null || boardArr.get("c" + rank) != null || boardArr.get("d" + rank) != null)
+					return false;
+				if(inHeck(moveBoardNoCheck(start, "d" + rank, boardArr), first.color))
+					return false;
+			} else return false;
 		}
 	}
 	
@@ -1058,6 +1241,8 @@ function checkForValidMoves(boardArr = board, color){
 	orientBoard();
 	resetBoard();
 	updateBoard();
+	gameHash = zobristKey(board, player); //seeded once, XOR-updated from here on
+	recordPosition(); //starting position counts toward repetition too
 	
 	
 	// move("e2","e4");

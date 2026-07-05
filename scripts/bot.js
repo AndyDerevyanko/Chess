@@ -214,11 +214,25 @@ if(mode === "bot"){
 
 		const mg = Math.min(phase, 24) / 24; //1 = full middlegame, 0 = bare-kings endgame
 
+		//pawns per file, for spotting isolated and doubled pawns below
+		const fileCounts = { w: [0,0,0,0,0,0,0,0], b: [0,0,0,0,0,0,0,0] };
+		for(const color of ["w", "b"])
+			for(const [file] of pawns[color])
+				fileCounts[color][file]++;
+
 		for(const color of ["w", "b"]){
 			const sign = color == BOT_COLOR ? 1 : -1;
 			const enemy = pawns[otherColor(color)];
 
 			for(const [file, rank] of pawns[color]){
+				//isolated - no friendly pawn on either adjacent file, so
+				//nothing can ever defend it
+				if((file == 0 || fileCounts[color][file - 1] == 0) && (file == 7 || fileCounts[color][file + 1] == 0))
+					score -= sign * 15;
+
+				//doubled - stacked pawns block each other's way forward
+				if(fileCounts[color][file] > 1)
+					score -= sign * 8;
 				//placement early, raw promotion distance late
 				score += sign * Math.round(
 					pstValue(PST.p, color, file, rank) * mg +
@@ -296,6 +310,7 @@ if(mode === "bot"){
 		for(const [from, to] of moves){
 			const next = cloneBoard(boardArr);
 			moveNoCheck(from, to, next);
+			updateMoveFlags(from, to, next); //clone owns its pieces, safe to flag
 			if(needsPromotion(to, next))
 				promote(to, "q", next); //always queen in search - simplest reasonable assumption
 			const score = search(next, depth - 1, alpha, beta, otherColor(color));
@@ -313,24 +328,13 @@ if(mode === "bot"){
 		return best;
 	}
 
-	//positions the bot has already produced this game. no repetition rule is
-	//implemented anywhere, so without a nudge away from repeats a won endgame
-	//can shuffle the same two positions forever once the mate is past the
-	//search horizon - the penalty forces it to try something new instead
+	//zobrist hashes of positions the bot has already produced this game,
+	//penalized at the root so a won endgame doesn't shuffle the same two
+	//positions until the threefold rule hands the opponent a draw
 	const seenAfterBotMove = new Map();
 
-	function positionKey(boardArr){
-		let key = "";
-		boardArr.forEach((piece, sq) => {
-			if(piece != null)
-				key += sq + piece.color + piece.type;
-		});
-		return key;
-	}
-
 	function recordBotPosition(){
-		const key = positionKey(board);
-		seenAfterBotMove.set(key, (seenAfterBotMove.get(key) || 0) + 1);
+		seenAfterBotMove.set(gameHash, (seenAfterBotMove.get(gameHash) || 0) + 1);
 	}
 
 	function chooseBotMove(depth){
@@ -342,10 +346,11 @@ if(mode === "bot"){
 		for(const [from, to] of moves){
 			const next = cloneBoard(board);
 			moveNoCheck(from, to, next);
+			updateMoveFlags(from, to, next);
 			if(needsPromotion(to, next))
 				promote(to, "q", next);
 			let score = search(next, depth - 1, alpha, Infinity, otherColor(BOT_COLOR));
-			score -= 45 * (seenAfterBotMove.get(positionKey(next)) || 0);
+			score -= 45 * (seenAfterBotMove.get(zobristKey(next, otherColor(BOT_COLOR))) || 0);
 
 			if(score > bestScore){
 				bestScore = score;
@@ -360,9 +365,14 @@ if(mode === "bot"){
 	//shared tail end for both a book move and a searched move - applies it to
 	//the real board, handles promotion, and passes the turn back
 	function applyBotMove(from, to){
+		//captured before move() mutates the board - see the matching comment
+		//in init.js's completeMove()
+		const resetClock = board.get(to) != null || board.get(from).type == "p";
+
 		move(from, to);
 		moveHistory.push(from + to);
 		updateOpeningName();
+		halfmoveClock = resetClock ? 0 : halfmoveClock + 1;
 
 		if(needsPromotion(to)){
 			promote(to, "q");
@@ -374,12 +384,17 @@ if(mode === "bot"){
 
 		player = otherColor(player);
 		updateCheckHighlight();
+		recordPosition();
 
 		const winner = otherColor(player) == "w" ? "White" : "Black";
 		if(checkMateCheck(board, player))
 			showGameOverModal("Checkmate!", winner + " wins.");
 		else if(staleMateCheck(board, player))
 			showGameOverModal("Stalemate!", "It's a draw.");
+		else if(halfmoveClock >= 100)
+			showGameOverModal("Draw", "50 moves with no pawn move or capture.");
+		else if(isThreefoldRepetition())
+			showGameOverModal("Draw", "Same position repeated three times.");
 
 		window.boardLocked = false;
 	}

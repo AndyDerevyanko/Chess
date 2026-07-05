@@ -1,3 +1,9 @@
+//browser's right-click "save image / inspect" menu is only wanted on the index
+//page (someone might want to save the hero board preview) - everywhere else
+//(setup, game, analysis, etc.) it just interrupts play, so block it there
+if(!/(^|\/)index\.html$/.test(location.pathname) && location.pathname !== "/" && !location.pathname.endsWith("/"))
+	document.addEventListener("contextmenu", e => e.preventDefault());
+
 let toastTimer = null;
 
 function showToast(message){
