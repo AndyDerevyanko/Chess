@@ -394,10 +394,26 @@ function drawPiece(p, s){
 	elem.className = img.className + "Container";
 	elem.id = img.className + s + "Container";
 	elem.appendChild(img);
-	
+
 	document.getElementById(s).appendChild(elem);
-	
-	
+
+	//a full redraw can land mid-drag - most notably the bot answering while a
+	//premove-drag is still in flight (see the comment above dragSourceColor
+	//below). Without this, drawPiece's fresh img un-hides the piece the user
+	//is still holding, so it appears twice: once under the drag ghost, once
+	//back on its home square. Compare colors, not object identity - a move
+	//also triggers syncViewToLive's history-replay redraw (buildHistoryBoard
+	//replays onto a fresh temp Map), which draws the very same piece again
+	//through a brand new object with matching value but different identity,
+	//and that harmless redraw must not be mistaken for a capture here. Only
+	//an actual enemy piece landing on this square (a genuine capture of the
+	//piece being dragged) can change its color, so that's what cancels it.
+	if(pointerDown != null && pointerDown.dragging && pointerDown.sq == s){
+		if(p.color === dragSourceColor)
+			img.style.visibility = "hidden";
+		else
+			cancelDrag();
+	}
 }
 
 function updateBoard(boardArr = board){
@@ -601,7 +617,12 @@ function undoMove(){
 	updateValidMoveArray(board); //replay skipped the per-ply recompute
 	lastOpeningName = currentOpeningName(moveHistory); //resync without re-toasting
 	window.boardLocked = false;
+	window.gameEnded = false;
 	closeModal("game-over-modal"); //undo can revive a game that had just ended
+	clearPremove(); //whatever was queued was aimed at a position that no longer exists
+
+	if(typeof clockOnUndo == "function")
+		clockOnUndo(); //resume the clock for whoever is now to move (flags stay final)
 
 	viewIndex = moveHistory.length;
 	renderHistoryBoard();
@@ -764,6 +785,11 @@ function finishTurn(){
 	const fifty = !mate && !stale && halfmoveClock >= 100;
 	const repetition = !mate && !stale && !fifty && isThreefoldRepetition();
 
+	//the mover keeps paying for their own promotion-modal dithering, so the
+	//clock is only handed over here, after any promotion is resolved
+	if(typeof clockOnMove == "function")
+		clockOnMove(mate || stale || fifty || repetition);
+
 	if(typeof playSound == "function")
 		playSound(mate ? "checkmate" : inCheck ? "check" : lastMoveCapture ? "capture" : "move");
 
@@ -797,10 +823,18 @@ let dragGhost = null;
 let dragGhostHalfW = 0;
 let dragGhostHalfH = 0;
 
+//color of the piece being dragged - a premove-drag can outlive the bot's move
+//landing (updateBoard() redraws the whole board mid-drag), so drawPiece uses
+//this to tell "still my piece, re-hide it" apart from "got captured out from
+//under me, cancel the drag" (see drawPiece above)
+let dragSourceColor = null;
+
 function startDrag(sq){
 	const img = document.getElementById(sq).querySelector("img");
 	if(img == null)
 		return;
+
+	dragSourceColor = board.get(sq).color;
 
 	dragGhost = document.createElement("img");
 	dragGhost.src = img.src;
@@ -851,14 +885,30 @@ function cancelDrag(){
 	clearMarkers();
 	selected = null;
 	pointerDown = null;
+	dragSourceColor = null;
 }
 
+//a mouse is one pointer, so pressing the right button while the left is
+//already held ("chorded buttons" in the spec) does NOT fire pointerdown -
+//it arrives as a pointermove with the buttons bitmask updated. This
+//listener only covers a right-click from a second pointer (e.g. mouse
+//while dragging by touch); the mid-drag case is caught in pointermove.
 document.addEventListener("pointerdown", e => {
-	if(e.button == 2 && pointerDown != null)
+	if(e.button != 2)
+		return;
+
+	if(pointerDown != null)
 		cancelDrag();
+	else if(typeof premove != "undefined" && (premove != null || selected != null)){
+		//right-click with nothing in hand clears a queued premove and any
+		//selection, chess.com-style
+		clearPremove();
+		clearMarkers();
+		selected = null;
+	}
 });
 
-function endDrag(from, x, y){
+function endDrag(from, x, y, isPremove){
 	const img = document.getElementById(from).querySelector("img");
 	if(img != null)
 		img.style.visibility = "visible";
@@ -868,8 +918,18 @@ function endDrag(from, x, y){
 		dragGhost = null;
 	}
 
+	dragSourceColor = null;
+
 	const under = document.elementFromPoint(x, y);
 	const targetSquare = under != null ? under.closest("#boardContainer > div") : null;
+
+	if(isPremove){
+		clearMarkers();
+		selected = null;
+		if(targetSquare != null && premoveTargets(from).includes(targetSquare.id))
+			setPremove(from, targetSquare.id);
+		return;
+	}
 
 	if(targetSquare != null && targetSquare.id != from && board.get(from) != null && board.get(from).validMoves.includes(targetSquare.id))
 		completeMove(from, targetSquare.id);
@@ -879,6 +939,13 @@ document.addEventListener("pointermove", e => {
 	if(pointerDown == null)
 		return;
 
+	//right button pressed mid-hold: chorded button presses surface here as a
+	//pointermove (see note above pointerdown), so this IS the right-click
+	if(e.buttons & 2){
+		cancelDrag();
+		return;
+	}
+
 	if(!pointerDown.dragging){
 		if(Math.hypot(e.clientX - pointerDown.x, e.clientY - pointerDown.y) < 6)
 			return;
@@ -886,7 +953,10 @@ document.addEventListener("pointermove", e => {
 		pointerDown.dragging = true;
 		selected = pointerDown.sq;
 		clearMarkers();
-		showMarkers(pointerDown.sq, board.get(pointerDown.sq));
+		if(pointerDown.premove)
+			showPremoveMarkers(pointerDown.sq);
+		else
+			showMarkers(pointerDown.sq, board.get(pointerDown.sq));
 		startDrag(pointerDown.sq);
 	}
 
@@ -900,10 +970,129 @@ document.addEventListener("pointerup", e => {
 		return;
 
 	if(pointerDown.dragging)
-		endDrag(pointerDown.sq, e.clientX, e.clientY);
+		endDrag(pointerDown.sq, e.clientX, e.clientY, pointerDown.premove);
 
 	pointerDown = null;
 });
+
+/* --- premoves (vs bot only, as on chess.com) -------------------
+   While the bot is thinking the board is locked, but the human may
+   still queue one move. It is validated only when it fires - the
+   position it lands in doesn't exist yet - so the queueable targets
+   are geometric: every square the piece could ever reach from where
+   it stands, sliding straight through blockers (they may move away),
+   pawn captures onto empty squares included (something may land
+   there). If the move turns out illegal, it's silently dropped. */
+
+let premove = null;
+
+//bot.js sets window.HUMAN_COLOR in bot mode - without it there is no
+//"not your turn but still your board" state, so premoves stay off
+function premoveAllowed(){
+	return typeof window.HUMAN_COLOR == "string" && window.boardLocked === true && !window.gameEnded;
+}
+
+function premoveTargets(sq){
+	const piece = board.get(sq);
+	if(piece == null)
+		return [];
+
+	const [f, r] = posToArr(sq);
+	const out = [];
+
+	const push = (x, y) => {
+		if(x < 0 || x > 7 || y < 0 || y > 7)
+			return;
+		const dest = arrToPos([x, y]);
+		const occupant = board.get(dest);
+		//unlike the opponent's pieces, our own can't vacate during the
+		//opponent's move, so a square they hold can never become legal
+		if(occupant == null || occupant.color != piece.color)
+			out.push(dest);
+	};
+
+	const ray = (dx, dy) => {
+		for(let i = 1; i < 8; i++)
+			push(f + dx * i, r + dy * i);
+	};
+
+	switch(piece.type){
+		case "p": {
+			const d = piece.color == "w" ? 1 : -1;
+			push(f, r + d);
+			if(r == (piece.color == "w" ? 1 : 6))
+				push(f, r + 2 * d);
+			push(f - 1, r + d);
+			push(f + 1, r + d);
+			break;
+		}
+		case "n":
+			[[1,2],[2,1],[2,-1],[1,-2],[-1,-2],[-2,-1],[-2,1],[-1,2]].forEach(([dx, dy]) => push(f + dx, r + dy));
+			break;
+		case "b":
+			ray(1,1); ray(1,-1); ray(-1,1); ray(-1,-1);
+			break;
+		case "r":
+			ray(1,0); ray(-1,0); ray(0,1); ray(0,-1);
+			break;
+		case "q":
+			ray(1,1); ray(1,-1); ray(-1,1); ray(-1,-1);
+			ray(1,0); ray(-1,0); ray(0,1); ray(0,-1);
+			break;
+		case "k":
+			for(let dx = -1; dx <= 1; dx++)
+				for(let dy = -1; dy <= 1; dy++)
+					if(dx != 0 || dy != 0)
+						push(f + dx, r + dy);
+			push(f + 2, r); //castling premoves
+			push(f - 2, r);
+			break;
+	}
+
+	return out;
+}
+
+//same dots/rings as live move markers, but fed by premoveTargets
+function showPremoveMarkers(sq){
+	for(const dest of premoveTargets(sq)){
+		let marker = document.createElement("div");
+		marker.className = "marker " + (board.get(dest) != null ? "marker-capture" : "marker-move");
+		marker.id = "marker" + sq + dest;
+		document.getElementById(dest).appendChild(marker);
+	}
+}
+
+function setPremove(from, to){
+	clearPremove();
+	premove = { from, to };
+	document.getElementById(from).classList.add("premove-sq");
+	document.getElementById(to).classList.add("premove-sq");
+}
+
+function clearPremove(){
+	premove = null;
+	document.querySelectorAll(".premove-sq").forEach(el => el.classList.remove("premove-sq"));
+}
+
+//called by bot.js right after the bot's move lands - the queued move plays
+//instantly if it's legal in the new position, otherwise it just evaporates
+function executePremove(){
+	if(premove == null)
+		return;
+
+	const from = premove.from;
+	const to = premove.to;
+	clearPremove();
+
+	if(window.boardLocked || window.gameEnded || viewIndex !== moveHistory.length)
+		return;
+
+	//the bot's move refreshed every validMoves list, so this is the full
+	//legality test in the position the premove actually fires in
+	const piece = board.get(from);
+	if(piece != null && piece.color == player && piece.validMoves.includes(to))
+		completeMove(from, to);
+}
 
 function initialize(){
 
@@ -931,19 +1120,57 @@ function initialize(){
 
 		elem[i].addEventListener("pointerdown", e => {
 			//left button only - right-click is reserved for cancelling a drag
-			if(e.button != 0 || window.boardLocked || viewIndex !== moveHistory.length)
+			if(e.button != 0 || viewIndex !== moveHistory.length || window.gameEnded)
 				return;
 
 			const piece = board.get(elem[i].id);
+
+			//locked board = bot's turn: the human can still pick their own
+			//piece up, the drop just queues a premove instead of moving
+			if(window.boardLocked){
+				if(premoveAllowed() && piece != null && piece.color == window.HUMAN_COLOR)
+					pointerDown = { sq: elem[i].id, x: e.clientX, y: e.clientY, dragging: false, premove: true };
+				return;
+			}
+
 			if(piece != null && piece.color == player)
-				pointerDown = { sq: elem[i].id, x: e.clientX, y: e.clientY, dragging: false };
+				pointerDown = { sq: elem[i].id, x: e.clientX, y: e.clientY, dragging: false, premove: false };
 		});
 
 		elem[i].addEventListener("click", () => {
-			if(window.boardLocked || viewIndex !== moveHistory.length)
+			if(viewIndex !== moveHistory.length || window.gameEnded)
 				return;
 
 			const sq = elem[i].id;
+
+			//click-to-premove while the bot is thinking, mirroring the normal
+			//pick-a-piece-then-pick-a-target flow below
+			if(window.boardLocked){
+				if(!premoveAllowed())
+					return;
+
+				if(selected != null && selected != sq && board.get(selected) != null
+						&& board.get(selected).color == window.HUMAN_COLOR
+						&& premoveTargets(selected).includes(sq)){
+					setPremove(selected, sq);
+					clearMarkers();
+					selected = null;
+					return;
+				}
+
+				clearMarkers();
+
+				const piece = board.get(sq);
+				if(selected != sq && piece != null && piece.color == window.HUMAN_COLOR){
+					selected = sq;
+					showPremoveMarkers(sq);
+				} else {
+					//clicking anywhere else cancels the selection and any queued premove
+					selected = null;
+					clearPremove();
+				}
+				return;
+			}
 
 			//clicking a marked destination actually makes the move
 			if(selected != null && board.get(selected) != null && board.get(selected).validMoves.includes(sq)){

@@ -7,6 +7,11 @@ const mode = new URLSearchParams(window.location.search).get("mode");
 if(mode === "bot"){
 
 	const BOT_COLOR = "b";
+
+	//init.js premove support keys off this: it marks whose pieces may be
+	//picked up while the board is locked for the bot's think
+	window.HUMAN_COLOR = "w";
+
 	const DEPTH_BY_DIFFICULTY = { novice: 2, club: 3, master: 4 };
 	const difficulty = new URLSearchParams(window.location.search).get("difficulty");
 	const BOT_DEPTH = DEPTH_BY_DIFFICULTY[difficulty] || DEPTH_BY_DIFFICULTY.novice;
@@ -337,7 +342,14 @@ if(mode === "bot"){
 		seenAfterBotMove.set(gameHash, (seenAfterBotMove.get(gameHash) || 0) + 1);
 	}
 
-	function chooseBotMove(depth){
+	//async so it can yield between root moves - a synchronous search blocks
+	//the whole main thread for its entire duration, which starves every other
+	//timer including the game clock's setInterval (JS runs one macrotask at a
+	//time, so nothing else - not even a 100ms tick - can fire mid-computation).
+	//The total time billed is still correct either way (clockTick reads real
+	//elapsed wall time), but without yielding the clock visibly freezes for
+	//the whole think and then jumps, instead of ticking down normally
+	async function chooseBotMove(depth){
 		const moves = orderMoves(board, legalMoves(board, BOT_COLOR));
 		let bestMove = null;
 		let bestScore = -Infinity;
@@ -358,6 +370,8 @@ if(mode === "bot"){
 			}
 			if(bestScore > alpha)
 				alpha = bestScore;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
 		}
 		return bestMove;
 	}
@@ -401,6 +415,10 @@ if(mode === "bot"){
 		const inCheck = inHeck(board, player);
 		const mate = !anyMoves && inCheck;
 		const stale = !anyMoves && !inCheck;
+		const over = mate || stale || halfmoveClock >= 100 || isThreefoldRepetition();
+
+		if(typeof clockOnMove == "function")
+			clockOnMove(over);
 
 		if(typeof playSound == "function")
 			playSound(mate ? "checkmate" : inCheck ? "check" : capture ? "capture" : "move");
@@ -416,6 +434,11 @@ if(mode === "bot"){
 			showGameOverModal("Draw", "Same position repeated three times.");
 
 		window.boardLocked = false;
+
+		//a premove queued during the think fires now - tiny delay so the
+		//bot's own move is visible on the board for a beat first
+		if(!over && typeof executePremove == "function")
+			setTimeout(executePremove, 120);
 	}
 
 	window.afterPlayerMove = function(){
@@ -435,9 +458,11 @@ if(mode === "bot"){
 
 		showToast("Bot is thinking...");
 
-		//let the toast paint before the search blocks the main thread
-		setTimeout(() => {
-			const chosen = chooseBotMove(BOT_DEPTH);
+		//let the toast paint before the search starts - chooseBotMove is now
+		//async and yields between root moves, so the game clock keeps ticking
+		//visibly throughout instead of freezing for the whole think
+		setTimeout(async () => {
+			const chosen = await chooseBotMove(BOT_DEPTH);
 			if(chosen != null)
 				applyBotMove(chosen[0], chosen[1]);
 			else

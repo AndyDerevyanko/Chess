@@ -518,6 +518,43 @@ body::after{
 	background: var(--cream);
 }
 
+/* --- Time control picker (setup page) --------------------------
+   Two tiers: the category row (Unlimited/Bullet/.../Custom) picks
+   which .tc-sub submenu of actual presets is shown below it. */
+.tc-sub{
+	margin-top: 1.1vmin;
+}
+
+.tc-custom{
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1.55vmin;
+	margin-top: 1.55vmin;
+	font-size: clamp(1.25vmin, .78vw, .95vw);
+	text-transform: uppercase;
+	letter-spacing: .12em;
+}
+
+.tc-custom label{
+	display: inline-flex;
+	align-items: center;
+	gap: .9vmin;
+	font-weight: 900;
+}
+
+.tc-custom input{
+	font-family: var(--font-pixel);
+	font-weight: 900;
+	font-size: clamp(1.25vmin, .8vw, 1vw);
+	color: var(--ink);
+	background: var(--cream);
+	border: .25vmin solid var(--ink);
+	border-radius: 1.1vmin;
+	padding: .65vmin .9vmin;
+	width: 9vmin;
+	min-width: 64px;
+}
+
 /* --- Toggle switch (visual only) ------------------------------ */
 .setting-row{
 	display: flex;

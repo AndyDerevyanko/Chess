@@ -52,7 +52,7 @@ Home (index.html)
 
 "About" is a popup on the home page instead of its own page.
 
-The game board is where most of the magic is: legal move generation (click, drag-and-drop, and promotion), check/checkmate/stalemate detection, the 50-move rule and repetition, an offline opening-name lookup (toasts the current position's book name as it changes), and Undo/Rewind/Redo/Live controls for reviewing a game in progress without disturbing it. When playing against the bot, players will see that it chooses its opening from a full offline opening database early on, then falls back to a depth-limited minimax search with positional evaluation once it's out of book.
+The game board is where most of the magic is: legal move generation (click, drag-and-drop, and promotion), check/checkmate/stalemate detection, the 50-move rule and repetition, an offline opening-name lookup (toasts the current position's book name as it changes), and Undo/Rewind/Redo/Live controls for reviewing a game in progress without disturbing it. Games can be played with any of the standard time controls picked on the setup page (bullet through rapid, with increment, or a custom clock — the game labels its own speed accordingly), and losing on time loses the game. When playing against the bot, players will see that it chooses its opening from a full offline opening database early on, then falls back to a depth-limited minimax search with positional evaluation once it's out of book — and premoves can be queued against it while it thinks, just like on chess.com.
 
 ## 🧩 Features
 

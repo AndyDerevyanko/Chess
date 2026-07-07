@@ -108,10 +108,40 @@ document.querySelectorAll(".toggle").forEach(toggle => {
 let selectedMode = document.querySelector(".mode-card.selected")?.getAttribute("data-mode") || "pass";
 let selectedDifficulty = document.querySelector(".choice[data-difficulty].selected")?.getAttribute("data-difficulty") || "novice";
 
+//"none" (Unlimited) is the only category pre-selected in the markup - actual
+//presets live inside hidden submenus, so there's nothing else to read at load
+let selectedTC = "none";
+
+//"custom" resolves to whatever the two number inputs currently say, clamped to
+//their own min/max so a hand-typed "0" or "9999" can't produce a broken clock
+function resolvedTimeControl(){
+	if(selectedTC != "custom")
+		return selectedTC;
+
+	const clamp = (el, fallback) => {
+		const v = Math.round(Number(el?.value));
+		if(isNaN(v))
+			return fallback;
+		return Math.min(Number(el.max), Math.max(Number(el.min), v));
+	};
+
+	const mins = clamp(document.getElementById("tc-custom-min"), 10);
+	const inc = clamp(document.getElementById("tc-custom-inc"), 0);
+	return (mins * 60) + "+" + inc;
+}
+
 function updateStartHref(){
 	const startBtn = document.getElementById("start-game-btn");
-	if(startBtn != null)
-		startBtn.setAttribute("href", "game.html?mode=" + selectedMode + "&difficulty=" + selectedDifficulty);
+	if(startBtn == null)
+		return;
+
+	let href = "game.html?mode=" + selectedMode + "&difficulty=" + selectedDifficulty;
+
+	const tc = resolvedTimeControl();
+	if(tc != "none")
+		href += "&tc=" + encodeURIComponent(tc); //the "+" would decode as a space otherwise
+
+	startBtn.setAttribute("href", href);
 }
 
 function wireModeCards(){
@@ -145,8 +175,84 @@ function wireDifficultyChoices(){
 	});
 }
 
+//two tiers: a category row (Unlimited/Bullet/Blitz/Rapid/Classical/Custom)
+//picks which submenu of actual presets is visible below it - only Custom's
+//minutes/increment inputs are shown outside that submenu concept. The
+//generic .choice-row handler above already makes each row's own buttons
+//mutually exclusive (both the category row and each submenu row qualify),
+//so this only needs to (a) show/hide the right submenu and (b) track
+//selectedTC, the actual value that feeds resolvedTimeControl()
+function wireTimeControlChoices(){
+	const categoryButtons = document.querySelectorAll(".choice[data-tc-category]");
+	if(categoryButtons.length === 0)
+		return;
+
+	const badge = document.getElementById("tc-badge");
+	const customRow = document.getElementById("tc-custom-row");
+	const subRows = document.querySelectorAll(".tc-sub");
+
+	const refresh = () => {
+		if(badge != null && typeof parseTimeControl == "function"){
+			const tc = parseTimeControl(resolvedTimeControl());
+			badge.textContent = tc == null ? "No Clock"
+				: classifyTimeControl(tc.base, tc.inc) + " · " + formatTimeControl(tc.base, tc.inc);
+		}
+		updateStartHref();
+	};
+
+	function showCategory(category){
+		subRows.forEach(row => { row.hidden = row.getAttribute("data-tc-sub") != category; });
+		if(customRow != null)
+			customRow.hidden = category != "custom";
+	}
+
+	function selectCategory(category){
+		categoryButtons.forEach(b => b.classList.remove("selected"));
+		document.querySelector('.choice[data-tc-category="' + category + '"]')?.classList.add("selected");
+		showCategory(category);
+
+		if(category == "none" || category == "custom"){
+			selectedTC = category;
+		} else {
+			//jumping into a speed picks its first (fastest) preset immediately,
+			//so the badge/clock never sits in limbo waiting on a second click
+			const sub = document.querySelector('.tc-sub[data-tc-sub="' + category + '"]');
+			sub?.querySelectorAll(".choice").forEach(c => c.classList.remove("selected"));
+			const first = sub?.querySelector(".choice[data-tc]");
+			if(first != null){
+				first.classList.add("selected");
+				selectedTC = first.getAttribute("data-tc");
+			}
+		}
+
+		refresh();
+	}
+
+	categoryButtons.forEach(btn => {
+		btn.addEventListener("click", () => selectCategory(btn.getAttribute("data-tc-category")));
+	});
+
+	subRows.forEach(row => {
+		row.addEventListener("click", e => {
+			const choice = e.target.closest(".choice[data-tc]");
+			if(choice != null){
+				selectedTC = choice.getAttribute("data-tc");
+				refresh();
+			}
+		});
+	});
+
+	["tc-custom-min", "tc-custom-inc"].forEach(id => {
+		document.getElementById(id)?.addEventListener("input", refresh);
+	});
+
+	showCategory("none");
+	refresh();
+}
+
 wireModeCards();
 wireDifficultyChoices();
+wireTimeControlChoices();
 updateStartHref();
 
 //reads ?mode= from the url and fills any [data-mode-label], purely cosmetic

@@ -39,6 +39,18 @@
 	white-space: nowrap;
 }
 
+/* the clocks live in the player bars' badges - gold while it's that side's
+   turn to move, red once the time drops under twenty seconds */
+.badge.clock-active{
+	background: var(--gold);
+	box-shadow: 0 0 0 .25vmin rgba(74,18,16,.35);
+}
+
+.badge.clock-low{
+	background: #b3261e;
+	color: var(--cream);
+}
+
 .capture-tray{
 	flex: 1;
 	text-align: center;
@@ -120,6 +132,12 @@
 	height: 86%;
 	border: 5px solid var(--gold);
 	box-shadow: 0 0 0 2px var(--ink), 0 0 8px 2px rgba(0,0,0,.5);
+}
+
+/* both ends of a queued premove - inset shadow tints the whole square
+   above its inline background but below the piece image, chess.com red */
+.premove-sq{
+	box-shadow: inset 0 0 0 999px rgba(179, 38, 30, .5);
 }
 
 /* king's square while its side is in check - inset so it doesn't fight the

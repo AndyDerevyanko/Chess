@@ -57,42 +57,41 @@
 						Time Control
 						<span class="badge muted" id="tc-badge">No Clock</span>
 					</div>
-					<div class="tc-group">
-						<span class="tc-group-label">Bullet</span>
-						<div class="choice-row">
-							<button class="choice" data-tc="60+0">1 min</button>
-							<button class="choice" data-tc="60+1">1 | 1</button>
-							<button class="choice" data-tc="120+1">2 | 1</button>
-						</div>
+					<div class="choice-row">
+						<button class="choice selected" data-tc-category="none">&#8734; Unlimited</button>
+						<button class="choice" data-tc-category="bullet">Bullet</button>
+						<button class="choice" data-tc-category="blitz">Blitz</button>
+						<button class="choice" data-tc-category="rapid">Rapid</button>
+						<button class="choice" data-tc-category="classical">Classical</button>
+						<button class="choice" data-tc-category="custom"><i class="icon" data-icon="settings"></i> Custom</button>
 					</div>
-					<div class="tc-group">
-						<span class="tc-group-label">Blitz</span>
-						<div class="choice-row">
-							<button class="choice" data-tc="180+0">3 min</button>
-							<button class="choice" data-tc="180+2">3 | 2</button>
-							<button class="choice" data-tc="300+0">5 min</button>
-							<button class="choice" data-tc="300+2">5 | 2</button>
-							<button class="choice" data-tc="300+5">5 | 5</button>
-						</div>
+
+					<div class="choice-row tc-sub" data-tc-sub="bullet" hidden>
+						<button class="choice" data-tc="60+0">1 min</button>
+						<button class="choice" data-tc="60+1">1 | 1</button>
+						<button class="choice" data-tc="120+1">2 | 1</button>
 					</div>
-					<div class="tc-group">
-						<span class="tc-group-label">Rapid</span>
-						<div class="choice-row">
-							<button class="choice" data-tc="600+0">10 min</button>
-							<button class="choice" data-tc="600+5">10 | 5</button>
-							<button class="choice" data-tc="900+10">15 | 10</button>
-							<button class="choice" data-tc="1200+0">20 min</button>
-							<button class="choice" data-tc="1800+0">30 min</button>
-							<button class="choice" data-tc="3600+0">60 min</button>
-						</div>
+					<div class="choice-row tc-sub" data-tc-sub="blitz" hidden>
+						<button class="choice" data-tc="180+0">3 min</button>
+						<button class="choice" data-tc="180+2">3 | 2</button>
+						<button class="choice" data-tc="300+0">5 min</button>
+						<button class="choice" data-tc="300+2">5 | 2</button>
+						<button class="choice" data-tc="300+5">5 | 5</button>
 					</div>
-					<div class="tc-group">
-						<span class="tc-group-label">Other</span>
-						<div class="choice-row">
-							<button class="choice selected" data-tc="none">&#8734; Unlimited</button>
-							<button class="choice" data-tc="custom"><i class="icon" data-icon="settings"></i> Custom</button>
-						</div>
+					<div class="choice-row tc-sub" data-tc-sub="rapid" hidden>
+						<button class="choice" data-tc="600+0">10 min</button>
+						<button class="choice" data-tc="600+5">10 | 5</button>
+						<button class="choice" data-tc="900+10">15 | 10</button>
+						<button class="choice" data-tc="1200+0">20 min</button>
+						<button class="choice" data-tc="1800+0">30 min</button>
+						<button class="choice" data-tc="3600+0">60 min</button>
 					</div>
+					<div class="choice-row tc-sub" data-tc-sub="classical" hidden>
+						<button class="choice" data-tc="5400+0">90 min</button>
+						<button class="choice" data-tc="3600+30">60 | 30</button>
+						<button class="choice" data-tc="7200+30">120 | 30</button>
+					</div>
+
 					<div class="tc-custom" id="tc-custom-row" hidden>
 						<label>Minutes <input type="number" id="tc-custom-min" min="1" max="180" step="1" value="10"></label>
 						<label>Increment (sec) <input type="number" id="tc-custom-inc" min="0" max="60" step="1" value="0"></label>
